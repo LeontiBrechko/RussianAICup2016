@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Diagram>
+  <ID>JAVA</ID>
+  <OriginalElement>model</OriginalElement>
+  <nodes>
+    <node x="268.0" y="237.0">model.Building</node>
+    <node x="322.0" y="311.0">model.MinionType</node>
+    <node x="173.0" y="237.0">model.Minion</node>
+    <node x="460.0" y="0.0">model.ProjectileType</node>
+    <node x="472.0" y="311.0">model.ActionType</node>
+    <node x="484.0" y="459.0">model.World</node>
+    <node x="0.0" y="533.0">model.Game</node>
+    <node x="94.0" y="237.0">model.Tree</node>
+    <node x="370.0" y="459.0">model.Player</node>
+    <node x="0.0" y="237.0">model.Wizard</node>
+    <node x="112.0" y="533.0">model.Move</node>
+    <node x="0.0" y="385.0">model.StatusType</node>
+    <node x="226.5" y="79.0">model.CircularUnit</node>
+    <node x="291.0" y="385.0">model.LaneType</node>
+    <node x="427.0" y="385.0">model.SkillType</node>
+    <node x="235.0" y="158.0">model.Projectile</node>
+    <node x="119.0" y="158.0">model.LivingUnit</node>
+    <node x="131.0" y="459.0">model.Faction</node>
+    <node x="251.0" y="0.0">model.Unit</node>
+    <node x="146.0" y="385.0">model.BonusType</node>
+    <node x="254.0" y="459.0">model.Status</node>
+    <node x="164.0" y="311.0">model.BuildingType</node>
+    <node x="0.0" y="459.0">model.Message</node>
+    <node x="345.0" y="158.0">model.Bonus</node>
+    <node x="0.0" y="311.0">model.PlayerContext</node>
+  </nodes>
+  <notes />
+  <edges>
+    <edge source="model.Wizard" target="model.LivingUnit">
+      <point x="0.0" y="-14.5" />
+      <point x="37.0" y="207.0" />
+      <point x="131.0" y="207.0" />
+      <point x="-36.0" y="14.5" />
+    </edge>
+    <edge source="model.Projectile" target="model.CircularUnit">
+      <point x="0.0" y="-14.5" />
+      <point x="0.0" y="14.5" />
+    </edge>
+    <edge source="model.Bonus" target="model.CircularUnit">
+      <point x="0.0" y="-14.5" />
+      <point x="380.0" y="133.0" />
+      <point x="315.66666666666663" y="133.0" />
+      <point x="35.66666666666663" y="14.5" />
+    </edge>
+    <edge source="model.Tree" target="model.LivingUnit">
+      <point x="0.0" y="-14.5" />
+      <point x="123.5" y="217.0" />
+      <point x="155.0" y="217.0" />
+      <point x="-12.0" y="14.5" />
+    </edge>
+    <edge source="model.Building" target="model.LivingUnit">
+      <point x="0.0" y="-14.5" />
+      <point x="309.5" y="207.0" />
+      <point x="203.0" y="207.0" />
+      <point x="36.0" y="14.5" />
+    </edge>
+    <edge source="model.CircularUnit" target="model.Unit">
+      <point x="0.0" y="-14.5" />
+      <point x="0.0" y="14.5" />
+    </edge>
+    <edge source="model.Minion" target="model.LivingUnit">
+      <point x="0.0" y="-14.5" />
+      <point x="210.5" y="217.0" />
+      <point x="179.0" y="217.0" />
+      <point x="12.0" y="14.5" />
+    </edge>
+    <edge source="model.LivingUnit" target="model.CircularUnit">
+      <point x="0.0" y="-14.5" />
+      <point x="167.0" y="133.0" />
+      <point x="244.33333333333334" y="133.0" />
+      <point x="-35.66666666666666" y="14.5" />
+    </edge>
+  </edges>
+  <settings layout="Hierarchic Group" zoom="1.0" x="290.0" y="161.5" />
+  <SelectedNodes />
+  <Categories />
+  <SCOPE>All</SCOPE>
+  <VISIBILITY>private</VISIBILITY>
+</Diagram>
+
