@@ -5,8 +5,8 @@ import java.util.stream.Collectors;
 
 public final class MyStrategy implements Strategy {
     // Constants
-    private static final double WAYPOINT_RADIUS = 100.0D;
-    private static final double LOW_HP_FACTOR = 0.25D;
+    private static final double WAYPOINT_RADIUS = Math.sqrt(80000.0) - 20.1;
+    private static final double LOW_HP_FACTOR = 0.25;
     private static final UnitType[] LIVING_UNIT_TYPES =
             new UnitType[]{UnitType.BUILDING, UnitType.MINION, UnitType.WIZARD, UnitType.TREE};
     private static final UnitType[] ACTION_UNIT_TYPES =
@@ -58,42 +58,46 @@ public final class MyStrategy implements Strategy {
 
             double mapSize = game.getMapSize();
 
-            WAYPOINTS_BY_LANE.put(LaneType.MIDDLE, new Point2D[]{
-                    new Point2D(100.0D, mapSize - 100.0D),
-                    random.nextBoolean()
-                            ? new Point2D(600.0D, mapSize - 200.0D)
-                            : new Point2D(200.0D, mapSize - 600.0D),
-                    new Point2D(800.0D, mapSize - 800.0D),
-                    new Point2D(mapSize - 600.0D, 600.0D)
-            });
+            // TODO: cut unnecessary object initializations
+            Point2D[] top = new Point2D[20];
+            top[0] = new Point2D(mapSize * 0.05, mapSize * 0.95);
+            top[1] = new Point2D(mapSize * 0.05, mapSize * 0.9 + 20.0);
+            for (int i = 2; i <= 8; i++) {
+                top[i] = new Point2D(mapSize * 0.05, mapSize * ((10.0 - i) / 10.0));
+            }
+            top[9] = new Point2D(mapSize * 0.05, mapSize * 0.15);
+            top[10] = new Point2D(mapSize * 0.1, mapSize * 0.1);
+            top[11] = new Point2D(mapSize * 0.15, mapSize * 0.05);
+            for (int i = 12; i <= 18; i++) {
+                top[i] = new Point2D(mapSize * ((i - 12.0 + 2.0) / 10.0), mapSize * 0.05);
+            }
+            top[19] = new Point2D(mapSize * 0.85, mapSize * 0.05);
 
-            WAYPOINTS_BY_LANE.put(LaneType.TOP, new Point2D[]{
-                    new Point2D(100.0D, mapSize - 100.0D),
-                    new Point2D(100.0D, mapSize - 400.0D),
-                    new Point2D(200.0D, mapSize - 800.0D),
-                    new Point2D(200.0D, mapSize * 0.75D),
-                    new Point2D(200.0D, mapSize * 0.5D),
-                    new Point2D(200.0D, mapSize * 0.25D),
-                    new Point2D(200.0D, 200.0D),
-                    new Point2D(mapSize * 0.25D, 200.0D),
-                    new Point2D(mapSize * 0.5D, 200.0D),
-                    new Point2D(mapSize * 0.75D, 200.0D),
-                    new Point2D(mapSize - 200.0D, 200.0D)
-            });
+            Point2D[] middle = new Point2D[17];
+            middle[0] = new Point2D(mapSize * 0.05, mapSize * 0.95);
+            middle[1] = new Point2D(mapSize * 0.05, mapSize * 0.9 + 20.0);
+            for (int i = 2; i <= 16; i++) {
+                middle[i] = new Point2D(mapSize * (((i - 2.0) / 2.0 + 1.5) / 10.0),
+                        mapSize * ((9.5 - i * 0.5) / 10.0));
+            }
 
-            WAYPOINTS_BY_LANE.put(LaneType.BOTTOM, new Point2D[]{
-                    new Point2D(100.0D, mapSize - 100.0D),
-                    new Point2D(400.0D, mapSize - 100.0D),
-                    new Point2D(800.0D, mapSize - 200.0D),
-                    new Point2D(mapSize * 0.25D, mapSize - 200.0D),
-                    new Point2D(mapSize * 0.5D, mapSize - 200.0D),
-                    new Point2D(mapSize * 0.75D, mapSize - 200.0D),
-                    new Point2D(mapSize - 200.0D, mapSize - 200.0D),
-                    new Point2D(mapSize - 200.0D, mapSize * 0.75D),
-                    new Point2D(mapSize - 200.0D, mapSize * 0.5D),
-                    new Point2D(mapSize - 200.0D, mapSize * 0.25D),
-                    new Point2D(mapSize - 200.0D, 200.0D)
-            });
+            Point2D[] bottom = new Point2D[20];
+            bottom[0] = new Point2D(mapSize * 0.05, mapSize * 0.95);
+            bottom[1] = new Point2D(mapSize * 0.1 - 20.0, mapSize * 0.95);
+            for (int i = 2; i <= 8; i++) {
+                bottom[i] = new Point2D(mapSize * (i / 10.0), mapSize * 0.95);
+            }
+            bottom[9] = new Point2D(mapSize * 0.85, mapSize * 0.95);
+            bottom[10] = new Point2D(mapSize * 0.9, mapSize * 0.9);
+            bottom[11] = new Point2D(mapSize * 0.95, mapSize * 0.85);
+            for (int i = 12; i <= 18; i++) {
+                bottom[i] = new Point2D(mapSize * 0.95, mapSize * ((8.0 - (i - 12.0)) / 10.0));
+            }
+            bottom[19] = new Point2D(mapSize * 0.95, mapSize * 0.15);
+
+            WAYPOINTS_BY_LANE.put(LaneType.TOP, top);
+            WAYPOINTS_BY_LANE.put(LaneType.MIDDLE, middle);
+            WAYPOINTS_BY_LANE.put(LaneType.BOTTOM, bottom);
 
             switch ((int) self.getId()) {
                 case 1:
@@ -116,16 +120,6 @@ public final class MyStrategy implements Strategy {
             }
 
             waypoints = WAYPOINTS_BY_LANE.get(lane);
-
-            // Наша стратегия исходит из предположения, что заданные нами ключевые точки упорядочены по убыванию
-            // дальности до последней ключевой точки. Сейчас проверка этого факта отключена, однако вы можете
-            // написать свою проверку, если решите изменить координаты ключевых точек.
-
-            /*Point2D lastWaypoint = waypoints[waypoints.length - 1];
-
-            Preconditions.checkState(ArrayUtils.isSorted(waypoints, (waypointA, waypointB) -> Double.compare(
-                    waypointB.getDistanceTo(lastWaypoint), waypointA.getDistanceTo(lastWaypoint)
-            )));*/
         }
     }
 
@@ -172,41 +166,45 @@ public final class MyStrategy implements Strategy {
     }
 
     private void handleMovement() {
+        List<LivingUnit> collisions = getCollisionList();
+        if (collisions.size() > 0) {
+            for (LivingUnit unit : collisions) {
+                if (unit.getFaction() == Faction.OTHER || unit.getFaction() == Faction.RENEGADES)
+                    move.setAction(ActionType.STAFF);
 
-        if (isBraveEnough && nearestEnemyTarget.isInCastRange(self)) {
-            Point2D previousWayPoint = getPreviousWaypoint();
-            retreatDelta = getRetreatDelta(previousWayPoint);
-            retreatAngle = self.getAngleTo(previousWayPoint.x, previousWayPoint.y);
-        }
+                double alpha = self.getAngleTo(unit);
+                boolean flag = alpha >= 0;
+                alpha = StrictMath.PI / 2.0 - StrictMath.abs(alpha);
+                double beta = (180.0 - alpha) / 2.0;
+                double a = self.getRadius();
+                double b = unit.getRadius();
+                double d = (a * StrictMath.sin(alpha)) / StrictMath.sin(beta);
+                double c = (b * d) / a;
+                double x = StrictMath.min(StrictMath.sin(alpha) * (c + d), game.getWizardStrafeSpeed());
+                if (flag) x = -x;
+                move.setStrafeSpeed(x);
+            }
+        } else if (nearestEnemyTarget.isInVisionRange(self)) {
+            retreatDelta = getRetreatDelta(previousWaypoint);
+            retreatAngle = self.getAngleTo(previousWaypoint.x, previousWaypoint.y);
 
-        // handle strafe speed
-//        move.setStrafeSpeed(random.nextBoolean() ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
-        if (isBraveEnough && nearestEnemyTarget.isInCastRange(self)) {
             move.setStrafeSpeed(StrictMath.sin(retreatAngle) * retreatDelta);
-        }
 
-        // handle turn
-        if (nearestEnemyTarget.isInCastRange(self)) {
             if (!isBraveEnough) {
-                move.setTurn(self.getAngleTo(previousWaypoint.x, previousWaypoint.y));
+                move.setTurn(retreatAngle);
             } else {
                 move.setTurn(nearestEnemyTarget.getAngleTo());
             }
-        } else {
-            move.setTurn(self.getAngleTo(nextWaypoint.x, nextWaypoint.y));
-        }
 
-        // handle move
-        if (nearestEnemyTarget.isInCastRange(self)) {
-            if (!isBraveEnough) {
-                move.setSpeed(game.getWizardForwardSpeed());
-            } else {
+            if (!isBraveEnough || nearestEnemyTarget.isInCastRange(self)) {
                 move.setSpeed(StrictMath.cos(retreatAngle) * retreatDelta);
+            } else {
+                move.setSpeed(game.getWizardForwardSpeed());
             }
         } else {
+            move.setTurn(self.getAngleTo(nextWaypoint.x, nextWaypoint.y));
             move.setSpeed(game.getWizardForwardSpeed());
         }
-
     }
 
     private void handleMasterManagement() {
@@ -262,7 +260,7 @@ public final class MyStrategy implements Strategy {
         for (UnitType unitType : unitTypes) livingUnits.addAll(unitsInRange.get(unitType));
         for (LivingUnit livingUnit : livingUnits) {
             currentLivingUnitDistance = self.getDistanceTo(livingUnit);
-            if (currentLivingUnitDistance + 70.0D < nearestLivingUnitDistance) {
+            if (currentLivingUnitDistance + 70.0 < nearestLivingUnitDistance) {
                 nearestLivingUnit = livingUnit;
                 nearestLivingUnitDistance = currentLivingUnitDistance;
             }
@@ -276,18 +274,50 @@ public final class MyStrategy implements Strategy {
 
     private boolean isBraveEnough() {
         boolean isBraveEnough = true;
-        int[][] count = new int[][] {
-                {visibleEnemyUnitsByMe.get(UnitType.WIZARD).size(), visibleFriendUnitsByMe.get(UnitType.WIZARD).size()},
-                {visibleEnemyUnitsByMe.get(UnitType.MINION).size(), visibleFriendUnitsByMe.get(UnitType.MINION).size()}
-        };
 
-        if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR)
-            isBraveEnough = false;
-        else {
-            if (count[1][1] == 0)
-                isBraveEnough = false;
+        if (nearestEnemyTarget.isFound()) {
+            double[] closestDists = new double[3];
+            Arrays.fill(closestDists, Double.MAX_VALUE);
+            double currentDist;
+            for (LivingUnit unit : visibleFriendUnitsByMe.get(UnitType.WIZARD)) {
+                currentDist = unit.getDistanceTo(nearestEnemyTarget.getLivingUnit());
+                if (currentDist < closestDists[0]) {
+                    closestDists[0] = currentDist;
+                }
+            }
+            for (LivingUnit unit : visibleFriendUnitsByMe.get(UnitType.MINION)) {
+                currentDist = unit.getDistanceTo(nearestEnemyTarget.getLivingUnit());
+                if (currentDist < closestDists[1]) {
+                    closestDists[1] = currentDist;
+                }
+            }
+            for (LivingUnit unit : visibleFriendUnitsByMe.get(UnitType.BUILDING)) {
+                currentDist = unit.getDistanceTo(nearestEnemyTarget.getLivingUnit());
+                if (currentDist < closestDists[1]) {
+                    closestDists[1] = currentDist;
+                }
+            }
+            if (closestDists[0] > nearestEnemyTarget.distanceTo
+                    && closestDists[1] > nearestEnemyTarget.distanceTo
+                    && closestDists[2] > nearestEnemyTarget.distanceTo) isBraveEnough = false;
         }
+
+        if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR && previousWaypoint != waypoints[0])
+            isBraveEnough = false;
         return isBraveEnough;
+    }
+
+    private List<LivingUnit> getCollisionList() {
+        List<LivingUnit> collisionList = new ArrayList<>();
+        for (UnitType unitType : LIVING_UNIT_TYPES) {
+            collisionList.addAll(
+                    Arrays.stream(getLivingUnitsByType(unitType))
+                            .filter((unit) -> self.getDistanceTo(unit) <= self.getRadius() + unit.getRadius() + 2.0
+                                    && !(unit instanceof Wizard && ((Wizard) unit).isMe())
+                                    && StrictMath.abs(self.getAngleTo(unit)) < StrictMath.PI / 2.0)
+                            .collect(Collectors.toList()));
+        }
+        return collisionList;
     }
 
     private double getRetreatDelta(Point2D pointForRetreat) {
@@ -298,40 +328,26 @@ public final class MyStrategy implements Strategy {
     }
 
     private Point2D getNextWaypoint() {
-        int lastWaypointIndex = waypoints.length - 1;
-        Point2D lastWaypoint = waypoints[lastWaypointIndex];
+        Point2D last = waypoints[waypoints.length - 1];
 
-        for (int waypointIndex = 0; waypointIndex < lastWaypointIndex; ++waypointIndex) {
-            Point2D waypoint = waypoints[waypointIndex];
-
-            if (waypoint.getDistanceTo(self) <= WAYPOINT_RADIUS) {
-                return waypoints[waypointIndex + 1];
-            }
-
-            if (lastWaypoint.getDistanceTo(waypoint) < lastWaypoint.getDistanceTo(self)) {
-                return waypoint;
+        for (int i = waypoints.length - 2; i >= 0; i--) {
+            double temp = waypoints[i].getDistanceTo(self);
+            if (waypoints[i].getDistanceTo(self) <= WAYPOINT_RADIUS) {
+                return waypoints[i + 1];
             }
         }
-
-        return lastWaypoint;
+        return last;
     }
 
     private Point2D getPreviousWaypoint() {
-        Point2D firstWaypoint = waypoints[0];
-
-        for (int waypointIndex = waypoints.length - 1; waypointIndex > 0; --waypointIndex) {
-            Point2D waypoint = waypoints[waypointIndex];
-
-            if (waypoint.getDistanceTo(self) <= WAYPOINT_RADIUS) {
-                return waypoints[waypointIndex - 1];
-            }
-
-            if (firstWaypoint.getDistanceTo(waypoint) < firstWaypoint.getDistanceTo(self)) {
-                return waypoint;
+        Point2D first = waypoints[0];
+        for (int i = 1; i < waypoints.length; i++) {
+            if (waypoints[i].getDistanceTo(self) <= WAYPOINT_RADIUS) {
+                return waypoints[i - 1];
             }
         }
 
-        return firstWaypoint;
+        return first;
     }
 
     private static final class Point2D {
@@ -361,6 +377,11 @@ public final class MyStrategy implements Strategy {
 
         public double getDistanceTo(Unit unit) {
             return getDistanceTo(unit.getX(), unit.getY());
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return !(obj == null || !(obj instanceof Point2D)) && this.x == ((Point2D) obj).x && this.y == ((Point2D) obj).y;
         }
     }
 
@@ -413,8 +434,12 @@ public final class MyStrategy implements Strategy {
             return this.isFound() && this.distanceTo <= self.getCastRange();
         }
 
+        public boolean isInVisionRange(Wizard self) {
+            return this.isFound() && this.distanceTo <= self.getVisionRange();
+        }
+
         public boolean isInStaffSector(Wizard self, Game game) {
-            return this.isInCastRange(self) && StrictMath.abs(this.angleTo) <= game.getStaffSector() / 2.0D;
+            return this.isInCastRange(self) && StrictMath.abs(this.angleTo) <= game.getStaffSector() / 2.0;
         }
     }
 

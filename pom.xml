@@ -8,6 +8,13 @@
     <artifactId>russianaicup2016</artifactId>
     <packaging>jar</packaging>
     <version>1.0-SNAPSHOT</version>
+    <dependencies>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>15.0</version>
+        </dependency>
+    </dependencies>
 
     <name>RussianAICup2016</name>
 
