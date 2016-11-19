@@ -1,47 +1,46 @@
 import model.*;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
+import static java.lang.StrictMath.*;
+
+@SuppressWarnings("WeakerAccess")
 public final class MyStrategy implements Strategy {
-    // Constants
-    private static final double WAYPOINT_RADIUS = 100.0D;
-    private static final double LOW_HP_FACTOR = 0.25D;
     private static final UnitType[] LIVING_UNIT_TYPES =
             new UnitType[]{UnitType.BUILDING, UnitType.MINION, UnitType.WIZARD, UnitType.TREE};
-    private static final UnitType[] ACTION_UNIT_TYPES =
-            new UnitType[]{UnitType.BUILDING, UnitType.MINION, UnitType.WIZARD};
+    private static final double NEAREST_UNIT_ERROR = 70.0;
+    private static final double BRAVERY_ERROR = 100.0;
+    private static final double VISION_ERROR = 0.1;
 
-    // World
-    private final Map<LaneType, Point2D[]> WAYPOINTS_BY_LANE = new EnumMap<>(LaneType.class);
-    private LaneType lane;
-    private Point2D[] waypoints;
-    private Point2D nextWaypoint;
-    private Point2D previousWaypoint;
+    private Random random;
 
-    private Minion[] visibleMinions;
-    private Tree[] visibleTrees;
-    private Building[] visibleBuildings;
-    private Wizard[] visibleWizards;
-
-    // Strategy
     private Wizard self;
     private World world;
     private Game game;
     private Move move;
 
-    private Random random;
+    // WORLD
+    private WayPoints wayPoints;
+    private CollisionHandler collisionHandler;
+    private int previousTickIndex;
+    private boolean shouldCheckForBonuses;
+    private boolean canCheckBonus;
 
-    private Map<UnitType, List<LivingUnit>> visibleEnemyUnitsByMe;
-    private Map<UnitType, List<LivingUnit>> visibleFriendUnitsByMe;
-    private LivingTarget nearestEnemyTarget;
-    private LivingTarget nearestFriendTarget;
-    private double retreatDelta;
-    private double retreatAngle;
+    // SELF
+    private LivingUnit nearestEnemyUnit;
+    private LivingUnit nearestFriendUnit;
+    private Tree nearestTree;
+
+    private Map<UnitType, ArrayDeque<LivingUnit>> visibleEnemyUnitsByMe;
+    private Map<UnitType, ArrayDeque<LivingUnit>> visibleFriendUnitsByMe;
+    private ArrayDeque<LivingUnit> visibleTreesByMe;
+    private ArrayDeque<LivingUnit> visibleNeutralMinionsByMe;
+
     private boolean isBraveEnough;
 
     @Override
     public void move(Wizard self, World world, Game game, Move move) {
+        if (world.getTickIndex() < 120) return;
         initializeStrategy(self, game);
         initializeTick(self, world, game, move);
         handleSkillLearning();
@@ -53,79 +52,9 @@ public final class MyStrategy implements Strategy {
     private void initializeStrategy(Wizard self, Game game) {
         if (random == null) {
             random = new Random(game.getRandomSeed());
-            nearestEnemyTarget = new LivingTarget();
-            nearestFriendTarget = new LivingTarget();
-
-            double mapSize = game.getMapSize();
-
-            WAYPOINTS_BY_LANE.put(LaneType.MIDDLE, new Point2D[]{
-                    new Point2D(100.0D, mapSize - 100.0D),
-                    random.nextBoolean()
-                            ? new Point2D(600.0D, mapSize - 200.0D)
-                            : new Point2D(200.0D, mapSize - 600.0D),
-                    new Point2D(800.0D, mapSize - 800.0D),
-                    new Point2D(mapSize - 600.0D, 600.0D)
-            });
-
-            WAYPOINTS_BY_LANE.put(LaneType.TOP, new Point2D[]{
-                    new Point2D(100.0D, mapSize - 100.0D),
-                    new Point2D(100.0D, mapSize - 400.0D),
-                    new Point2D(200.0D, mapSize - 800.0D),
-                    new Point2D(200.0D, mapSize * 0.75D),
-                    new Point2D(200.0D, mapSize * 0.5D),
-                    new Point2D(200.0D, mapSize * 0.25D),
-                    new Point2D(200.0D, 200.0D),
-                    new Point2D(mapSize * 0.25D, 200.0D),
-                    new Point2D(mapSize * 0.5D, 200.0D),
-                    new Point2D(mapSize * 0.75D, 200.0D),
-                    new Point2D(mapSize - 200.0D, 200.0D)
-            });
-
-            WAYPOINTS_BY_LANE.put(LaneType.BOTTOM, new Point2D[]{
-                    new Point2D(100.0D, mapSize - 100.0D),
-                    new Point2D(400.0D, mapSize - 100.0D),
-                    new Point2D(800.0D, mapSize - 200.0D),
-                    new Point2D(mapSize * 0.25D, mapSize - 200.0D),
-                    new Point2D(mapSize * 0.5D, mapSize - 200.0D),
-                    new Point2D(mapSize * 0.75D, mapSize - 200.0D),
-                    new Point2D(mapSize - 200.0D, mapSize - 200.0D),
-                    new Point2D(mapSize - 200.0D, mapSize * 0.75D),
-                    new Point2D(mapSize - 200.0D, mapSize * 0.5D),
-                    new Point2D(mapSize - 200.0D, mapSize * 0.25D),
-                    new Point2D(mapSize - 200.0D, 200.0D)
-            });
-
-            switch ((int) self.getId()) {
-                case 1:
-                case 2:
-                case 6:
-                case 7:
-                    lane = LaneType.TOP;
-                    break;
-                case 3:
-                case 8:
-                    lane = LaneType.MIDDLE;
-                    break;
-                case 4:
-                case 5:
-                case 9:
-                case 10:
-                    lane = LaneType.BOTTOM;
-                    break;
-                default:
-            }
-
-            waypoints = WAYPOINTS_BY_LANE.get(lane);
-
-            // Наша стратегия исходит из предположения, что заданные нами ключевые точки упорядочены по убыванию
-            // дальности до последней ключевой точки. Сейчас проверка этого факта отключена, однако вы можете
-            // написать свою проверку, если решите изменить координаты ключевых точек.
-
-            /*Point2D lastWaypoint = waypoints[waypoints.length - 1];
-
-            Preconditions.checkState(ArrayUtils.isSorted(waypoints, (waypointA, waypointB) -> Double.compare(
-                    waypointB.getDistanceTo(lastWaypoint), waypointA.getDistanceTo(lastWaypoint)
-            )));*/
+            shouldCheckForBonuses = true;
+            wayPoints = new WayPoints(self, game);
+            collisionHandler = new CollisionHandler(self);
         }
     }
 
@@ -135,78 +64,57 @@ public final class MyStrategy implements Strategy {
         this.game = game;
         this.move = move;
 
-        nextWaypoint = getNextWaypoint();
-        previousWaypoint = getPreviousWaypoint();
+        collisionHandler.setSelf(self);
 
-        visibleMinions = world.getMinions();
-        visibleTrees = world.getTrees();
-        visibleBuildings = world.getBuildings();
-        visibleWizards = world.getWizards();
+        if (world.getTickIndex() - previousTickIndex > 1 || !wayPoints.isLaneDetermined())
+            wayPoints.determineWayToGo(world, game);
+        previousTickIndex = world.getTickIndex();
 
-        visibleEnemyUnitsByMe = getLivingUnitsInRange(Faction.RENEGADES, ACTION_UNIT_TYPES,
-                self.getVisionRange());
-        visibleFriendUnitsByMe = getLivingUnitsInRange(Faction.ACADEMY, ACTION_UNIT_TYPES,
-                self.getVisionRange());
-
-        findNextNearestTarget(Faction.RENEGADES, LIVING_UNIT_TYPES, nearestEnemyTarget, Double.MAX_VALUE);
-        findNextNearestTarget(Faction.ACADEMY, LIVING_UNIT_TYPES, nearestFriendTarget, Double.MAX_VALUE);
-
+        wayPoints.findNextWayPoint(self, random);
+        wayPoints.findPreviousWayPoint(self, random);
+        lookAround();
         isBraveEnough = isBraveEnough();
+
+        if (world.getTickIndex() % game.getBonusAppearanceIntervalTicks() == 0) {
+            shouldCheckForBonuses = true;
+            canCheckBonus = false;
+        }
+
+        if (shouldCheckForBonuses && !canCheckBonus) canCheckBonus = areBonusesReachable();
     }
 
     private void handleSkillLearning() {
     }
 
     private void handleActionExecution() {
-        if (isBraveEnough && self.getRemainingActionCooldownTicks() == 0) {
-            if (nearestEnemyTarget.isInStaffSector(self, game)) {
-                move.setAction(ActionType.MAGIC_MISSILE);
-                move.setCastAngle(nearestEnemyTarget.getAngleTo());
-                move.setMinCastDistance(nearestEnemyTarget.getDistanceTo() -
-                        nearestEnemyTarget.getLivingUnit().getRadius() +
-                        game.getMagicMissileRadius());
-            }
-        } else {
-            move.setAction(ActionType.NONE);
+        if (isBraveEnough && isUnitInStaffSector(nearestEnemyUnit)
+                && isUnitInCastRange(nearestEnemyUnit)) {
+            move.setAction(ActionType.MAGIC_MISSILE);
+            move.setCastAngle(self.getAngleTo(nearestEnemyUnit));
+            move.setMinCastDistance(self.getDistanceTo(nearestEnemyUnit) -
+                    nearestEnemyUnit.getRadius() + game.getMagicMissileRadius());
+        } else if (isUnitInStaffSector(nearestTree) && isUnitInStaffRange(nearestTree)) {
+            move.setAction(ActionType.STAFF);
+            move.setCastAngle(self.getAngleTo(nearestTree));
         }
     }
 
     private void handleMovement() {
+        if (canCheckBonus) checkForBonuses();
+        else if (isUnitInVisionRange(nearestEnemyUnit))
+            moveAgainstUnit(wayPoints.getPreviousWayPoint(), nearestEnemyUnit);
+        else if (isUnitInStaffRange(nearestTree))
+            moveAgainstUnit(wayPoints.getNextWayPoint(), nearestTree);
+        else moveTowardsWayPoint(wayPoints.getNextWayPoint());
 
-        if (isBraveEnough && nearestEnemyTarget.isInCastRange(self)) {
-            Point2D previousWayPoint = getPreviousWaypoint();
-            retreatDelta = getRetreatDelta(previousWayPoint);
-            retreatAngle = self.getAngleTo(previousWayPoint.x, previousWayPoint.y);
+        ArrayDeque<LivingUnit> units = new ArrayDeque<>();
+        for (UnitType unitType : LIVING_UNIT_TYPES) {
+            units.addAll(visibleEnemyUnitsByMe.get(unitType));
+            units.addAll(visibleFriendUnitsByMe.get(unitType));
         }
-
-        // handle strafe speed
-//        move.setStrafeSpeed(random.nextBoolean() ? game.getWizardStrafeSpeed() : -game.getWizardStrafeSpeed());
-        if (isBraveEnough && nearestEnemyTarget.isInCastRange(self)) {
-            move.setStrafeSpeed(StrictMath.sin(retreatAngle) * retreatDelta);
-        }
-
-        // handle turn
-        if (nearestEnemyTarget.isInCastRange(self)) {
-            if (!isBraveEnough) {
-                move.setTurn(self.getAngleTo(previousWaypoint.x, previousWaypoint.y));
-            } else {
-                move.setTurn(nearestEnemyTarget.getAngleTo());
-            }
-        } else {
-            move.setTurn(self.getAngleTo(nextWaypoint.x, nextWaypoint.y));
-        }
-
-        // handle move
-        if (nearestEnemyTarget.isInCastRange(self)) {
-            if (!isBraveEnough) {
-                move.setSpeed(game.getWizardForwardSpeed());
-            } else {
-                move.setSpeed(StrictMath.cos(retreatAngle) * retreatDelta);
-            }
-        } else {
-            move.setSpeed(game.getWizardForwardSpeed());
-        }
-
+        units.addAll(visibleNeutralMinionsByMe);
+        units.addAll(visibleTreesByMe);
+        collisionHandler.handleSingleCollision(units, move);
     }
 
     private void handleMasterManagement() {
@@ -215,222 +123,226 @@ public final class MyStrategy implements Strategy {
     /*
       ---------------------------------UTILS PART-----------------------------------------------------------------------
      */
-    private Map<UnitType, List<LivingUnit>> getLivingUnitsInRange(Faction faction, UnitType[] unitTypes,
-                                                                  double range) {
-        Map<UnitType, List<LivingUnit>> unitsByType = new EnumMap<>(UnitType.class);
-        for (UnitType unitType : unitTypes) {
-            unitsByType.put(unitType,
-                    Arrays.stream(getLivingUnitsByType(unitType))
-                            .filter((unit) -> unit.getFaction() == faction
-                                    && self.getDistanceTo(unit) <= range
-                                    && !(unit instanceof Wizard && ((Wizard) unit).isMe()))
-                            .collect(Collectors.toList()));
+
+    private void lookAround() {
+        double currentDistance;
+        double nearestEnemyDistance = Float.MAX_VALUE;
+        LivingUnit nearestEnemy = null;
+        double nearestFriendDistance = Float.MAX_VALUE;
+        LivingUnit nearestFriend = null;
+        double nearestTreeDistance = Float.MAX_VALUE;
+        Tree nearestTree = null;
+        boolean isNearestTreeStillVisible = false;
+
+        visibleEnemyUnitsByMe = new EnumMap<>(UnitType.class);
+        visibleFriendUnitsByMe = new EnumMap<>(UnitType.class);
+        visibleTreesByMe = new ArrayDeque<>();
+        visibleNeutralMinionsByMe = new ArrayDeque<>();
+
+        LivingUnit[] units;
+
+        for (UnitType unitType : LIVING_UNIT_TYPES) {
+            visibleEnemyUnitsByMe.put(unitType, new ArrayDeque<>());
+            visibleFriendUnitsByMe.put(unitType, new ArrayDeque<>());
+
+            switch (unitType) {
+                case WIZARD:
+                    units = world.getWizards();
+                    break;
+                case MINION:
+                    units = world.getMinions();
+                    break;
+                case BUILDING:
+                    units = world.getBuildings();
+                    break;
+                case TREE:
+                    units = world.getTrees();
+                    break;
+                default:
+                    throw new IllegalArgumentException(String.format("%s is not living unit type.", unitType));
+            }
+
+            for (LivingUnit unit : units) {
+                currentDistance = self.getDistanceTo(unit);
+                if (!isUnitInVisionRange(unit)
+                        || (unit instanceof Wizard && ((Wizard) unit).isMe())) continue;
+                switch (unit.getFaction()) {
+                    case RENEGADES:
+                        visibleEnemyUnitsByMe.get(unitType).add(unit);
+                        if (currentDistance + NEAREST_UNIT_ERROR < nearestEnemyDistance) {
+                            nearestEnemyDistance = currentDistance;
+                            nearestEnemy = unit;
+                        }
+                        break;
+                    case ACADEMY:
+                        visibleFriendUnitsByMe.get(unitType).add(unit);
+                        if (currentDistance + NEAREST_UNIT_ERROR < nearestFriendDistance) {
+                            nearestFriendDistance = currentDistance;
+                            nearestFriend = unit;
+                        }
+                        break;
+                    case NEUTRAL:
+                        visibleNeutralMinionsByMe.add(unit);
+                        break;
+                    case OTHER:
+                        if (unit instanceof Tree) {
+                            visibleTreesByMe.add(unit);
+                            if (!isNearestTreeStillVisible &&
+                                    currentDistance + NEAREST_UNIT_ERROR < nearestTreeDistance) {
+                                nearestTreeDistance = currentDistance;
+                                nearestTree = (Tree) unit;
+                            }
+                            if (isUnitInStaffRange(this.nearestTree) &&
+                                    this.nearestTree.getId() == unit.getId()) isNearestTreeStillVisible = true;
+                        }
+                        break;
+                }
+            }
         }
-        return unitsByType;
+        this.nearestEnemyUnit = nearestEnemy;
+        this.nearestFriendUnit = nearestFriend;
+        if (!isNearestTreeStillVisible) this.nearestTree = nearestTree;
     }
 
-    private LivingUnit[] getLivingUnitsByType(UnitType unitType) {
-        LivingUnit[] array;
-        switch (unitType) {
-            case MINION:
-                array = visibleMinions;
-                break;
-            case TREE:
-                array = visibleTrees;
-                break;
-            case BUILDING:
-                array = visibleBuildings;
-                break;
-            case WIZARD:
-                array = visibleWizards;
-                break;
-            default:
-                throw new EnumConstantNotPresentException(UnitType.class, unitType.toString());
-        }
-        return array;
+    private double getRetreatDelta(Point2D pointForRetreat, LivingUnit unit) {
+        double cosAlpha = cos(abs(self.getAngleTo(pointForRetreat.getX(), pointForRetreat.getY())));
+        double a = self.getDistanceTo(unit);
+        double b = self.getCastRange();
+        return a * cosAlpha + sqrt(a * a * (cosAlpha * cosAlpha - 1) + b * b);
     }
 
-    private void findNextNearestTarget(Faction faction, UnitType[] unitTypes,
-                                       LivingTarget existingTarget, double range) {
-        Map<UnitType, List<LivingUnit>> unitsInRange = getLivingUnitsInRange(faction, unitTypes, range);
-        List<LivingUnit> livingUnits = new ArrayList<>();
-        LivingUnit nearestLivingUnit = null;
-        double nearestLivingUnitDistance = Double.MAX_VALUE;
-        double nearestLivingUnitAngle = Double.MAX_VALUE;
-        double currentLivingUnitDistance;
+    private void moveAgainstUnit(Point2D wayPoint, LivingUnit unit) {
+        double retreatDelta = getRetreatDelta(wayPoint, unit);
+        double retreatAngle = self.getAngleTo(wayPoint.getX(), wayPoint.getY());
 
-        for (UnitType unitType : unitTypes) livingUnits.addAll(unitsInRange.get(unitType));
-        for (LivingUnit livingUnit : livingUnits) {
-            currentLivingUnitDistance = self.getDistanceTo(livingUnit);
-            if (currentLivingUnitDistance + 70.0D < nearestLivingUnitDistance) {
-                nearestLivingUnit = livingUnit;
-                nearestLivingUnitDistance = currentLivingUnitDistance;
+        if ((isBraveEnough && isUnitInCastRange(unit)) || unit instanceof Tree)
+            move.setStrafeSpeed(sin(retreatAngle) * retreatDelta);
+
+        if (isBraveEnough || unit instanceof Tree) move.setTurn(self.getAngleTo(unit));
+        else move.setTurn(retreatAngle);
+
+        if ((isBraveEnough && isUnitInCastRange(unit)) || (unit instanceof Tree && isUnitInStaffRange(unit)))
+            move.setSpeed(cos(retreatAngle) * retreatDelta);
+        else if (isBraveEnough && !(unit instanceof Tree)) move.setSpeed(self.getDistanceTo(unit));
+        else move.setSpeed(self.getDistanceTo(wayPoint.getX(), wayPoint.getY()));
+    }
+
+    private void moveTowardsWayPoint(Point2D wayPoint) {
+        move.setTurn(self.getAngleTo(wayPoint.getX(), wayPoint.getY()));
+        move.setSpeed(self.getDistanceTo(wayPoint.getX(), wayPoint.getY()));
+    }
+
+    private boolean areBonusesReachable() {
+        return ((wayPoints.getCurrentLane() != LaneType.MIDDLE &&
+                wayPoints.getNextWayPointIndex() - 1 == 10)
+//                wayPoints.getNextWayPointIndex() - 1 >= 9 &&
+//                wayPoints.getNextWayPointIndex() - 1 <= 13)
+                || (wayPoints.getCurrentLane() == LaneType.MIDDLE &&
+                wayPoints.getNextWayPointIndex() - 1 == 9));
+//                wayPoints.getNextWayPointIndex() - 1 >= 8 &&
+//                wayPoints.getNextWayPointIndex() - 1 <= 10);
+    }
+
+    // TODO: check for both bonuses at middle lane
+    private void checkForBonuses() {
+        Point2D wayPoint;
+        Point2D[] bonusWayPoints = wayPoints.getBonusWayPoints();
+        if (bonusWayPoints.length == 1) wayPoint = bonusWayPoints[0];
+        else wayPoint = bonusWayPoints[0].getDistanceTo(self) < bonusWayPoints[1].getDistanceTo(self)
+                ? bonusWayPoints[0] : bonusWayPoints[1];
+
+        boolean isBonusInPlace = true;
+        Bonus bonusToTake = null;
+        for (Bonus visibleBonus : world.getBonuses()) {
+            if (visibleBonus.getX() == wayPoint.getX()) {
+                bonusToTake = visibleBonus;
+                break;
             }
         }
 
-        if (nearestLivingUnit != null) nearestLivingUnitAngle = self.getAngleTo(nearestLivingUnit);
-        existingTarget.setLivingUnit(nearestLivingUnit);
-        existingTarget.setDistanceTo(nearestLivingUnitDistance);
-        existingTarget.setAngleTo(nearestLivingUnitAngle);
+        for (Wizard wizard : world.getWizards()) {
+            if (wayPoint.getDistanceTo(wizard) + VISION_ERROR + game.getBonusRadius() + 100.0 <= wizard.getVisionRange()) {
+                if (bonusToTake == null) isBonusInPlace = false;
+            }
+        }
+
+        if (isBonusInPlace) {
+            if (isUnitInCastRange(nearestEnemyUnit)) moveAgainstUnit(wayPoint, nearestEnemyUnit);
+            else if (isUnitInStaffRange(nearestTree)) moveAgainstUnit(wayPoint, nearestTree);
+            else moveTowardsWayPoint(wayPoint);
+        } else {
+            shouldCheckForBonuses = false;
+            canCheckBonus = false;
+        }
+    }
+
+//    // TODO: review
+//    private double getSpeedVectorNorm() {
+//        double speed = move.getSpeed();
+//        double maxSpeed = speed >= 0.0 ? game.getWizardForwardSpeed() : game.getWizardBackwardSpeed();
+//        double strafeSpeed = move.getStrafeSpeed();
+//        double maxStrafeSpeed = game.getWizardStrafeSpeed();
+//        double border = sqrt(pow(speed / maxSpeed, 2) + pow(strafeSpeed / maxStrafeSpeed, 2));
+//        if (border > 1.0) {
+//            speed /= border;
+//            strafeSpeed /= border;
+//        }
+//        return hypot(strafeSpeed, speed);
+//    }
+
+    private boolean isUnitInVisionRange(Unit unit) {
+        return unit != null && self.getDistanceTo(unit) + VISION_ERROR <= self.getVisionRange();
+    }
+
+    private boolean isUnitInStaffSector(Unit unit) {
+        return unit != null && abs(self.getAngleTo(unit)) <= game.getStaffSector() / 2.0;
+    }
+
+    private boolean isUnitInCastRange(Unit unit) {
+        return unit != null && self.getDistanceTo(unit) + VISION_ERROR <= self.getCastRange();
+    }
+
+    private boolean isUnitInStaffRange(Unit unit) {
+        if (unit != null && unit instanceof LivingUnit)
+            return self.getDistanceTo(unit) - ((LivingUnit) unit).getRadius() <= 70.0;
+        return unit != null && self.getDistanceTo(unit) <= 70.0;
     }
 
     private boolean isBraveEnough() {
         boolean isBraveEnough = true;
-        int[][] count = new int[][] {
-                {visibleEnemyUnitsByMe.get(UnitType.WIZARD).size(), visibleFriendUnitsByMe.get(UnitType.WIZARD).size()},
-                {visibleEnemyUnitsByMe.get(UnitType.MINION).size(), visibleFriendUnitsByMe.get(UnitType.MINION).size()}
-        };
 
-        if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR)
-            isBraveEnough = false;
-        else {
-            if (count[1][1] == 0)
-                isBraveEnough = false;
+        if (nearestEnemyUnit != null) {
+            double distanceToEnemy = self.getDistanceTo(nearestEnemyUnit) + BRAVERY_ERROR;
+            double[] closestDists = new double[3];
+            Arrays.fill(closestDists, Double.MAX_VALUE);
+            double currentDist;
+            for (LivingUnit unit : visibleFriendUnitsByMe.get(UnitType.WIZARD)) {
+                currentDist = unit.getDistanceTo(nearestEnemyUnit);
+                if (currentDist < closestDists[0]) {
+                    closestDists[0] = currentDist;
+                }
+            }
+            for (LivingUnit unit : visibleFriendUnitsByMe.get(UnitType.MINION)) {
+                currentDist = unit.getDistanceTo(nearestEnemyUnit);
+                if (currentDist < closestDists[1]) {
+                    closestDists[1] = currentDist;
+                }
+            }
+            for (LivingUnit unit : visibleFriendUnitsByMe.get(UnitType.BUILDING)) {
+                currentDist = unit.getDistanceTo(nearestEnemyUnit);
+                if (currentDist < closestDists[2]) {
+                    closestDists[2] = currentDist;
+                }
+            }
+            if (closestDists[0] > distanceToEnemy
+                    && closestDists[1] > distanceToEnemy
+                    && closestDists[2] > distanceToEnemy) isBraveEnough = false;
         }
+        // TODO: think about this check
+//            if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR && previousWayPoint != wayPoints[0])
+//                isBraveEnough = false;
+//        }
+
         return isBraveEnough;
-    }
-
-    private double getRetreatDelta(Point2D pointForRetreat) {
-        double cosAlpha = StrictMath.cos(StrictMath.abs(self.getAngleTo(pointForRetreat.x, pointForRetreat.y)));
-        double a = nearestEnemyTarget.getDistanceTo();
-        double b = self.getCastRange();
-        return a * cosAlpha + StrictMath.sqrt(a * a * (cosAlpha * cosAlpha - 1) + b * b);
-    }
-
-    private Point2D getNextWaypoint() {
-        int lastWaypointIndex = waypoints.length - 1;
-        Point2D lastWaypoint = waypoints[lastWaypointIndex];
-
-        for (int waypointIndex = 0; waypointIndex < lastWaypointIndex; ++waypointIndex) {
-            Point2D waypoint = waypoints[waypointIndex];
-
-            if (waypoint.getDistanceTo(self) <= WAYPOINT_RADIUS) {
-                return waypoints[waypointIndex + 1];
-            }
-
-            if (lastWaypoint.getDistanceTo(waypoint) < lastWaypoint.getDistanceTo(self)) {
-                return waypoint;
-            }
-        }
-
-        return lastWaypoint;
-    }
-
-    private Point2D getPreviousWaypoint() {
-        Point2D firstWaypoint = waypoints[0];
-
-        for (int waypointIndex = waypoints.length - 1; waypointIndex > 0; --waypointIndex) {
-            Point2D waypoint = waypoints[waypointIndex];
-
-            if (waypoint.getDistanceTo(self) <= WAYPOINT_RADIUS) {
-                return waypoints[waypointIndex - 1];
-            }
-
-            if (firstWaypoint.getDistanceTo(waypoint) < firstWaypoint.getDistanceTo(self)) {
-                return waypoint;
-            }
-        }
-
-        return firstWaypoint;
-    }
-
-    private static final class Point2D {
-        private final double x;
-        private final double y;
-
-        private Point2D(double x, double y) {
-            this.x = x;
-            this.y = y;
-        }
-
-        public double getX() {
-            return x;
-        }
-
-        public double getY() {
-            return y;
-        }
-
-        public double getDistanceTo(double x, double y) {
-            return StrictMath.hypot(this.x - x, this.y - y);
-        }
-
-        public double getDistanceTo(Point2D point) {
-            return getDistanceTo(point.x, point.y);
-        }
-
-        public double getDistanceTo(Unit unit) {
-            return getDistanceTo(unit.getX(), unit.getY());
-        }
-    }
-
-    private static final class LivingTarget {
-        private LivingUnit livingUnit;
-        private double distanceTo;
-        private double angleTo;
-
-        public LivingTarget() {
-            this.distanceTo = Double.MAX_VALUE;
-            this.angleTo = Double.MAX_VALUE;
-        }
-
-        public LivingTarget(LivingUnit livingUnit, double distanceTo, double angleTo) {
-            this();
-            this.livingUnit = livingUnit;
-            this.distanceTo = distanceTo;
-            this.angleTo = angleTo;
-        }
-
-        public LivingUnit getLivingUnit() {
-            return livingUnit;
-        }
-
-        public void setLivingUnit(LivingUnit livingUnit) {
-            this.livingUnit = livingUnit;
-        }
-
-        public double getDistanceTo() {
-            return distanceTo;
-        }
-
-        public void setDistanceTo(double distanceTo) {
-            this.distanceTo = distanceTo;
-        }
-
-        public double getAngleTo() {
-            return angleTo;
-        }
-
-        public void setAngleTo(double angleTo) {
-            this.angleTo = angleTo;
-        }
-
-        public boolean isFound() {
-            return this.getLivingUnit() != null;
-        }
-
-        public boolean isInCastRange(Wizard self) {
-            return this.isFound() && this.distanceTo <= self.getCastRange();
-        }
-
-        public boolean isInStaffSector(Wizard self, Game game) {
-            return this.isInCastRange(self) && StrictMath.abs(this.angleTo) <= game.getStaffSector() / 2.0D;
-        }
-    }
-
-    private enum UnitType {
-        /**
-         * Circular units
-         */
-        BONUS,
-        PROJECTILE,
-
-        /**
-         * Living units
-         */
-        WIZARD,
-        BUILDING,
-        TREE,
-        MINION
     }
 }
