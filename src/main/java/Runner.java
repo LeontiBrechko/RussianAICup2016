@@ -1,7 +1,4 @@
-import model.Game;
-import model.Move;
-import model.PlayerContext;
-import model.Wizard;
+import model.*;
 
 import java.io.IOException;
 

@@ -259,7 +259,7 @@ public class WayPoints {
 
     private LaneType determineLane(World world, Faction friendFaction) {
         LaneType lane;
-        boolean[] isCounted = new boolean[5];
+        HashSet<Long> ids = new HashSet<>();
         int topCount = 0;
         int middleCount = 0;
         int bottomCount = 0;
@@ -284,9 +284,9 @@ public class WayPoints {
             Point2D[] top = pointsByLane.get(LaneType.TOP);
             Point2D[] middle = pointsByLane.get(LaneType.MIDDLE);
             Point2D[] bottom = pointsByLane.get(LaneType.BOTTOM);
-            topCount = countWizards(top, isCounted, world, friendFaction);
-            middleCount = countWizards(middle, isCounted, world, friendFaction);
-            bottomCount = countWizards(bottom, isCounted, world, friendFaction);
+            topCount = countWizards(top, ids, world, friendFaction);
+            middleCount = countWizards(middle, ids, world, friendFaction);
+            bottomCount = countWizards(bottom, ids, world, friendFaction);
         }
 
         // TODO: check properly when don't have enough wizards
@@ -297,15 +297,15 @@ public class WayPoints {
         return lane;
     }
 
-    private int countWizards(Point2D[] wayPoints, boolean[] isCounted, World world, Faction friendFaction) {
+    private int countWizards(Point2D[] wayPoints, HashSet<Long> isCounted, World world, Faction friendFaction) {
         int count = 0;
         for (Point2D point : wayPoints) {
             for (Wizard wizard : world.getWizards()) {
                 if (wizard.getFaction() != friendFaction || wizard.isMe()
-                        || isCounted[(int) wizard.getId() - 1]) continue;
+                        || isCounted.contains(wizard.getId())) continue;
                 if (point.getDistanceTo(wizard) <= WAY_POINT_RADIUS + 50.0) {
                     count++;
-                    isCounted[(int) wizard.getId() - 1] = true;
+                    isCounted.add(wizard.getId());
                 }
             }
         }

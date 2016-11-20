@@ -1,7 +1,9 @@
 package model;
 
 
-import static java.lang.StrictMath.*;
+import static java.lang.StrictMath.PI;
+import static java.lang.StrictMath.atan2;
+import static java.lang.StrictMath.hypot;
 
 /**
  * Базовый класс для определения объектов (<<юнитов>>) на игровом поле.
