@@ -7,7 +7,7 @@ import static java.lang.StrictMath.*;
 @SuppressWarnings("WeakerAccess")
 public class WayPoints {
     private static final double WAY_POINT_RADIUS = sqrt(80000.0) + 35.1;
-    private static final double WAY_POINT_RANGE = 190.0;
+    private static final double WAY_POINT_RANGE = 90.0;
 
     private Map<LaneType, Point2D[]> pointsByLane;
     private LaneType currentLane;
@@ -128,7 +128,6 @@ public class WayPoints {
         }
 
         if (currentLane != LaneType.MIDDLE && bonusWayPoints[0].getDistanceTo(self) <= closestDist)
-
             if (closestIndex != nextWayPointIndex) {
                 if (closestIndex < currentLaneWayPoints.length - 4) {
                     x = closest.getX() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;

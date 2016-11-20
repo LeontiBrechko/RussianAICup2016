@@ -59,7 +59,7 @@ public final class MyStrategy implements Strategy {
             else enemyFaction = Faction.ACADEMY;
             shouldCheckForBonuses = true;
             wayPoints = new WayPoints(self, game);
-            collisionHandler = new CollisionHandler(self);
+            collisionHandler = new CollisionHandler();
         }
     }
 
@@ -68,8 +68,6 @@ public final class MyStrategy implements Strategy {
         this.world = world;
         this.game = game;
         this.move = move;
-
-        collisionHandler.setSelf(self);
 
         if (world.getTickIndex() - previousTickIndex > 1 || !wayPoints.isLaneDetermined())
             wayPoints.determineWayToGo(world, game, friendFaction);
@@ -105,13 +103,6 @@ public final class MyStrategy implements Strategy {
     }
 
     private void handleMovement() {
-        if (canCheckBonus) checkForBonuses();
-        else if (isUnitInVisionRange(nearestEnemyUnit))
-            moveAgainstUnit(wayPoints.getPreviousWayPoint(), nearestEnemyUnit);
-        else if (isUnitInStaffRange(nearestTree))
-            moveAgainstUnit(wayPoints.getNextWayPoint(), nearestTree);
-        else moveTowardsWayPoint(wayPoints.getNextWayPoint());
-
         ArrayDeque<LivingUnit> units = new ArrayDeque<>();
         for (UnitType unitType : LIVING_UNIT_TYPES) {
             units.addAll(visibleEnemyUnitsByMe.get(unitType));
@@ -119,7 +110,14 @@ public final class MyStrategy implements Strategy {
         }
         units.addAll(visibleNeutralMinionsByMe);
         units.addAll(visibleTreesByMe);
-        collisionHandler.handleSingleCollision(units, move);
+
+        if (canCheckBonus) checkForBonuses();
+        else if (isUnitInVisionRange(nearestEnemyUnit))
+            moveAgainstUnit(wayPoints.getPreviousWayPoint(), nearestEnemyUnit);
+        else if (isUnitInStaffRange(nearestTree)) moveAgainstUnit(wayPoints.getNextWayPoint(), nearestTree);
+        else moveTowardsWayPoint(wayPoints.getNextWayPoint());
+
+        collisionHandler.handleSingleCollision(units, self, move);
     }
 
     private void handleMasterManagement() {
