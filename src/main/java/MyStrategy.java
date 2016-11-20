@@ -37,6 +37,8 @@ public final class MyStrategy implements Strategy {
     private ArrayDeque<LivingUnit> visibleNeutralMinionsByMe;
 
     private boolean isBraveEnough;
+    private Faction friendFaction;
+    private Faction enemyFaction;
 
     @Override
     public void move(Wizard self, World world, Game game, Move move) {
@@ -52,6 +54,9 @@ public final class MyStrategy implements Strategy {
     private void initializeStrategy(Wizard self, Game game) {
         if (random == null) {
             random = new Random(game.getRandomSeed());
+            friendFaction = self.getFaction();
+            if (friendFaction == Faction.ACADEMY) enemyFaction = Faction.RENEGADES;
+            else enemyFaction = Faction.ACADEMY;
             shouldCheckForBonuses = true;
             wayPoints = new WayPoints(self, game);
             collisionHandler = new CollisionHandler(self);
@@ -67,7 +72,7 @@ public final class MyStrategy implements Strategy {
         collisionHandler.setSelf(self);
 
         if (world.getTickIndex() - previousTickIndex > 1 || !wayPoints.isLaneDetermined())
-            wayPoints.determineWayToGo(world, game);
+            wayPoints.determineWayToGo(world, game, friendFaction);
         previousTickIndex = world.getTickIndex();
 
         wayPoints.findNextWayPoint(self, random);
@@ -168,17 +173,33 @@ public final class MyStrategy implements Strategy {
                         || (unit instanceof Wizard && ((Wizard) unit).isMe())) continue;
                 switch (unit.getFaction()) {
                     case RENEGADES:
-                        visibleEnemyUnitsByMe.get(unitType).add(unit);
-                        if (currentDistance + NEAREST_UNIT_ERROR < nearestEnemyDistance) {
-                            nearestEnemyDistance = currentDistance;
-                            nearestEnemy = unit;
+                        if (friendFaction == Faction.RENEGADES) {
+                            visibleFriendUnitsByMe.get(unitType).add(unit);
+                            if (currentDistance + NEAREST_UNIT_ERROR < nearestFriendDistance) {
+                                nearestFriendDistance = currentDistance;
+                                nearestFriend = unit;
+                            }
+                        } else {
+                            visibleEnemyUnitsByMe.get(unitType).add(unit);
+                            if (currentDistance + NEAREST_UNIT_ERROR < nearestEnemyDistance) {
+                                nearestEnemyDistance = currentDistance;
+                                nearestEnemy = unit;
+                            }
                         }
                         break;
                     case ACADEMY:
-                        visibleFriendUnitsByMe.get(unitType).add(unit);
-                        if (currentDistance + NEAREST_UNIT_ERROR < nearestFriendDistance) {
-                            nearestFriendDistance = currentDistance;
-                            nearestFriend = unit;
+                        if (friendFaction == Faction.RENEGADES) {
+                            visibleEnemyUnitsByMe.get(unitType).add(unit);
+                            if (currentDistance + NEAREST_UNIT_ERROR < nearestEnemyDistance) {
+                                nearestEnemyDistance = currentDistance;
+                                nearestEnemy = unit;
+                            }
+                        } else {
+                            visibleFriendUnitsByMe.get(unitType).add(unit);
+                            if (currentDistance + NEAREST_UNIT_ERROR < nearestFriendDistance) {
+                                nearestFriendDistance = currentDistance;
+                                nearestFriend = unit;
+                            }
                         }
                         break;
                     case NEUTRAL:

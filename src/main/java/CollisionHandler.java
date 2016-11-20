@@ -1,13 +1,12 @@
 import model.*;
-import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
 import static java.lang.StrictMath.*;
 
-@SuppressWarnings({"WeakerAccess", "Convert2streamapi"})
+@SuppressWarnings("ALL")
 public class CollisionHandler {
-    private static final double COLLISION_ERROR = 7.0;
+    private static final double COLLISION_ERROR = 8.0;
     private static final double PI_BY_2 = PI / 2.0;
 
     private Wizard self;
@@ -105,6 +104,7 @@ public class CollisionHandler {
         return unit != null && self.getDistanceTo(unit) <= self.getRadius() + unit.getRadius() + COLLISION_ERROR;
     }
 
+    @SuppressWarnings("NullableProblems")
     private static class CollisionUnit implements Comparable<CollisionUnit> {
         private LivingUnit unit;
         private double distance;
@@ -117,7 +117,7 @@ public class CollisionHandler {
         }
 
         @Override
-        public int compareTo(@NotNull CollisionUnit o) {
+        public int compareTo(CollisionUnit o) {
             int res = Double.compare(this.distance, o.distance);
             if (res == 0) res = Double.compare(abs(this.angle), abs(o.angle));
             return res;

@@ -90,8 +90,8 @@ public class WayPoints {
 
     // PUBLIC METHODS
 
-    public void determineWayToGo(World world, Game game) {
-        currentLane = determineLane(world);
+    public void determineWayToGo(World world, Game game, Faction friendFaction) {
+        currentLane = determineLane(world, friendFaction);
         currentLaneWayPoints = pointsByLane.get(currentLane);
         bonusWayPoints = getBonusWayPoints(game);
     }
@@ -251,25 +251,13 @@ public class WayPoints {
         bottom[21] = new Point2D(mapSize * 0.975, mapSize * 0.1 - 20.0);
         bottom[22] = new Point2D(mapSize * 0.975, mapSize * 0.95);
 
-        if (faction == Faction.RENEGADES) {
-            List<Point2D> list = Arrays.asList(top);
-            Collections.reverse(list);
-            top = (Point2D[]) list.toArray();
-            list = Arrays.asList(middle);
-            Collections.reverse(list);
-            middle = (Point2D[]) list.toArray();
-            list = Arrays.asList(bottom);
-            Collections.reverse(list);
-            bottom = (Point2D[]) list.toArray();
-        }
-
         pointsByLane = new EnumMap<>(LaneType.class);
         pointsByLane.put(LaneType.TOP, top);
         pointsByLane.put(LaneType.MIDDLE, middle);
         pointsByLane.put(LaneType.BOTTOM, bottom);
     }
 
-    private LaneType determineLane(World world) {
+    private LaneType determineLane(World world, Faction friendFaction) {
         LaneType lane;
         boolean[] isCounted = new boolean[5];
         int topCount = 0;
@@ -283,7 +271,7 @@ public class WayPoints {
             Point2D bottom = pointsByLane.get(LaneType.BOTTOM)[5];
 
             for (Wizard wizard : world.getWizards()) {
-                if (wizard.isMe() || wizard.getFaction() != Faction.ACADEMY) continue;
+                if (wizard.isMe() || wizard.getFaction() != friendFaction) continue;
                 topAngle = abs(wizard.getAngleTo(top.getX(), top.getY()));
                 middleAngle = abs(wizard.getAngleTo(middle.getX(), middle.getY()));
                 bottomAngle = abs(wizard.getAngleTo(bottom.getX(), bottom.getY()));
@@ -296,9 +284,9 @@ public class WayPoints {
             Point2D[] top = pointsByLane.get(LaneType.TOP);
             Point2D[] middle = pointsByLane.get(LaneType.MIDDLE);
             Point2D[] bottom = pointsByLane.get(LaneType.BOTTOM);
-            topCount = countWizards(top, isCounted, world);
-            middleCount = countWizards(middle, isCounted, world);
-            bottomCount = countWizards(bottom, isCounted, world);
+            topCount = countWizards(top, isCounted, world, friendFaction);
+            middleCount = countWizards(middle, isCounted, world, friendFaction);
+            bottomCount = countWizards(bottom, isCounted, world, friendFaction);
         }
 
         // TODO: check properly when don't have enough wizards
@@ -309,11 +297,11 @@ public class WayPoints {
         return lane;
     }
 
-    private int countWizards(Point2D[] wayPoints, boolean[] isCounted, World world) {
+    private int countWizards(Point2D[] wayPoints, boolean[] isCounted, World world, Faction friendFaction) {
         int count = 0;
         for (Point2D point : wayPoints) {
             for (Wizard wizard : world.getWizards()) {
-                if (wizard.getFaction() != Faction.ACADEMY || wizard.isMe()
+                if (wizard.getFaction() != friendFaction || wizard.isMe()
                         || isCounted[(int) wizard.getId() - 1]) continue;
                 if (point.getDistanceTo(wizard) <= WAY_POINT_RADIUS + 50.0) {
                     count++;
