@@ -6,7 +6,7 @@ import static java.lang.StrictMath.*;
 
 @SuppressWarnings("WeakerAccess")
 public class WayPoints {
-    private static final double WAY_POINT_RADIUS = sqrt(80000.0) + 35.1;
+    private static final double WAY_POINT_RADIUS = sqrt(80000.0) + 70.0;
     private static final double WAY_POINT_RANGE = 90.0;
 
     private Map<LaneType, Point2D[]> pointsByLane;
@@ -28,64 +28,32 @@ public class WayPoints {
         return pointsByLane;
     }
 
-    public void setPointsByLane(Map<LaneType, Point2D[]> pointsByLane) {
-        this.pointsByLane = pointsByLane;
-    }
-
     public LaneType getCurrentLane() {
         return currentLane;
-    }
-
-    public void setCurrentLane(LaneType currentLane) {
-        this.currentLane = currentLane;
     }
 
     public Point2D[] getCurrentLaneWayPoints() {
         return currentLaneWayPoints;
     }
 
-    public void setCurrentLaneWayPoints(Point2D[] currentLaneWayPoints) {
-        this.currentLaneWayPoints = currentLaneWayPoints;
-    }
-
     public Point2D[] getBonusWayPoints() {
         return bonusWayPoints;
-    }
-
-    public void setBonusWayPoints(Point2D[] bonusWayPoints) {
-        this.bonusWayPoints = bonusWayPoints;
     }
 
     public int getNextWayPointIndex() {
         return nextWayPointIndex;
     }
 
-    public void setNextWayPointIndex(int nextWayPointIndex) {
-        this.nextWayPointIndex = nextWayPointIndex;
-    }
-
     public int getPreviousWayPointIndex() {
         return previousWayPointIndex;
-    }
-
-    public void setPreviousWayPointIndex(int previousWayPointIndex) {
-        this.previousWayPointIndex = previousWayPointIndex;
     }
 
     public Point2D getNextWayPoint() {
         return nextWayPoint;
     }
 
-    public void setNextWayPoint(Point2D nextWayPoint) {
-        this.nextWayPoint = nextWayPoint;
-    }
-
     public Point2D getPreviousWayPoint() {
         return previousWayPoint;
-    }
-
-    public void setPreviousWayPoint(Point2D previousWayPoint) {
-        this.previousWayPoint = previousWayPoint;
     }
 
     // PUBLIC METHODS
@@ -107,7 +75,7 @@ public class WayPoints {
             currentDist = currentLaneWayPoints[i].getDistanceTo(self);
             if (currentDist <= WAY_POINT_RADIUS) {
                 if (i + 1 != nextWayPointIndex) {
-                    if (i + 1 < currentLaneWayPoints.length - 4) {
+                    if (i + 1 < currentLaneWayPoints.length - 5) {
                         x = currentLaneWayPoints[i + 1].getX() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
                         y = currentLaneWayPoints[i + 1].getY() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
                         x = min(x, 3964.0);
@@ -116,7 +84,10 @@ public class WayPoints {
                         y = max(y, 36.0);
                         nextWayPoint = new Point2D(x, y);
                         nextWayPointIndex = i + 1;
-                    } else nextWayPoint = currentLaneWayPoints[i + 1];
+                    } else {
+                        nextWayPoint = currentLaneWayPoints[i + 1];
+                        nextWayPointIndex = i + 1;
+                    }
                 }
                 return;
             }
@@ -127,15 +98,21 @@ public class WayPoints {
             }
         }
 
-        if (currentLane != LaneType.MIDDLE && bonusWayPoints[0].getDistanceTo(self) <= closestDist)
-            if (closestIndex != nextWayPointIndex) {
-                if (closestIndex < currentLaneWayPoints.length - 4) {
-                    x = closest.getX() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
-                    y = closest.getY() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
-                    nextWayPoint = new Point2D(x, y);
-                    nextWayPointIndex = closestIndex;
-                } else nextWayPoint = closest;
+        if (closestIndex != nextWayPointIndex) {
+            if (closestIndex < currentLaneWayPoints.length - 5) {
+                x = closest.getX() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
+                y = closest.getY() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
+                x = min(x, 3964.0);
+                x = max(x, 36.0);
+                y = min(y, 3964.0);
+                y = max(y, 36.0);
+                nextWayPoint = new Point2D(x, y);
+                nextWayPointIndex = closestIndex;
+            } else {
+                nextWayPoint = closest;
+                nextWayPointIndex = closestIndex;
             }
+        }
     }
 
     public void findPreviousWayPoint(Wizard self, Random random) {
@@ -149,7 +126,7 @@ public class WayPoints {
             currentDist = currentLaneWayPoints[i].getDistanceTo(self);
             if (currentDist <= WAY_POINT_RADIUS) {
                 if (i - 1 != previousWayPointIndex) {
-                    if (i - 1 < currentLaneWayPoints.length - 4) {
+                    if (i - 1 < currentLaneWayPoints.length - 5) {
                         x = currentLaneWayPoints[i - 1].getX() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
                         y = currentLaneWayPoints[i - 1].getY() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
                         x = min(x, 3964.0);
@@ -158,7 +135,10 @@ public class WayPoints {
                         y = max(y, 36.0);
                         previousWayPoint = new Point2D(x, y);
                         previousWayPointIndex = i - 1;
-                    } else previousWayPoint = currentLaneWayPoints[i - 1];
+                    } else {
+                        previousWayPoint = currentLaneWayPoints[i - 1];
+                        previousWayPointIndex = i - 1;
+                    }
                 }
                 return;
             }
@@ -170,12 +150,19 @@ public class WayPoints {
         }
 
         if (closestIndex != previousWayPointIndex) {
-            if (closestIndex < currentLaneWayPoints.length - 4) {
+            if (closestIndex < currentLaneWayPoints.length - 5) {
                 x = closest.getX() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
                 y = closest.getY() + random.nextDouble() * 2 * WAY_POINT_RANGE - WAY_POINT_RANGE;
+                x = min(x, 3964.0);
+                x = max(x, 36.0);
+                y = min(y, 3964.0);
+                y = max(y, 36.0);
                 previousWayPoint = new Point2D(x, y);
                 previousWayPointIndex = closestIndex;
-            } else previousWayPoint = closest;
+            } else {
+                previousWayPoint = closest;
+                previousWayPointIndex = closestIndex;
+            }
         }
     }
 
@@ -210,9 +197,10 @@ public class WayPoints {
         top[10] = new Point2D(mapSize * 0.05, mapSize * 0.15);
         top[11] = new Point2D(mapSize * 0.1, mapSize * 0.1);
         top[12] = new Point2D(mapSize * 0.15, mapSize * 0.05);
-        for (int i = 13, j = 0; i <= 18; i++, j++) {
+        for (int i = 13, j = 0; i <= 17; i++, j++) {
             top[i] = new Point2D(mapSize * ((2.0 + j) / 10.0), mapSize * 0.05);
         }
+        top[18] = new Point2D(mapSize * 0.75, mapSize * 0.075);
         top[19] = new Point2D(mapSize * 0.8, mapSize * 0.075);
         top[20] = new Point2D(mapSize * 0.85, mapSize * 0.075);
         top[21] = new Point2D(mapSize * 0.9 + 20.0, mapSize * 0.075);
@@ -222,10 +210,11 @@ public class WayPoints {
         middle = new Point2D[19];
         middle[0] = new Point2D(mapSize * 0.05, mapSize * 0.95);
         middle[1] = new Point2D(mapSize * 0.05, mapSize * 0.9 + 20.0);
-        for (int i = 2; i <= 14; i++) {
+        for (int i = 2; i <= 13; i++) {
             middle[i] = new Point2D(mapSize * (((i - 2.0) / 2.0 + 1.5) / 10.0),
                     mapSize * ((9.5 - i * 0.5) / 10.0));
         }
+        middle[14] = new Point2D(mapSize * 0.77, mapSize * 0.28);
         middle[15] = new Point2D(mapSize * 0.82, mapSize * 0.23);
         middle[16] = new Point2D(mapSize * 0.87, mapSize * 0.18);
         middle[17] = new Point2D(mapSize * 0.95, mapSize * 0.1 - 20.0);
@@ -242,9 +231,10 @@ public class WayPoints {
         bottom[10] = new Point2D(mapSize * 0.85, mapSize * 0.95);
         bottom[11] = new Point2D(mapSize * 0.9, mapSize * 0.9);
         bottom[12] = new Point2D(mapSize * 0.95, mapSize * 0.85);
-        for (int i = 13, j = 0; i <= 18; i++, j++) {
+        for (int i = 13, j = 0; i <= 17; i++, j++) {
             bottom[i] = new Point2D(mapSize * 0.95, mapSize * ((8.0 - j) / 10.0));
         }
+        bottom[18] = new Point2D(mapSize * 0.975, mapSize * 0.25);
         bottom[19] = new Point2D(mapSize * 0.975, mapSize * 0.2);
         bottom[20] = new Point2D(mapSize * 0.975, mapSize * 0.15);
         bottom[21] = new Point2D(mapSize * 0.975, mapSize * 0.1 - 20.0);
