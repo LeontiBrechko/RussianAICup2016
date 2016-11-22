@@ -286,7 +286,8 @@ public final class MyStrategy implements Strategy {
         }
 
         if (isBonusInPlace) {
-            if (isUnitInCastRange(nearestEnemyUnit)) moveAgainstUnit(wayPoint, nearestEnemyUnit);
+            if (isUnitInCastRange(nearestEnemyUnit) && isBraveEnough)
+                moveAgainstUnit(wayPoint, nearestEnemyUnit);
             else if (isUnitInStaffRange(nearestTree)) moveAgainstUnit(wayPoint, nearestTree);
             else moveTowardsWayPoint(wayPoint);
         } else {
@@ -330,7 +331,17 @@ public final class MyStrategy implements Strategy {
     private boolean isBraveEnough() {
         boolean isBraveEnough = true;
 
-        if (nearestEnemyUnit != null) {
+        Point2D[] currentWayPoints = wayPoints.getCurrentLaneWayPoints();
+        if (wayPoints.getNextWayPointIndex() - 1 >= currentWayPoints.length - 5) {
+            Point2D lastSafeWayPoint = currentWayPoints[currentWayPoints.length - 5];
+            double distanceToLastSafePoint = self.getDistanceTo(lastSafeWayPoint.getX(), lastSafeWayPoint.getY());
+            int minionAppearanceInterval = game.getFactionMinionAppearanceIntervalTicks();
+            if ((minionAppearanceInterval - (world.getTickIndex() % minionAppearanceInterval) - 2.0
+                    <= (distanceToLastSafePoint / 3.0)))
+                isBraveEnough = false;
+        }
+
+        if (isBraveEnough && nearestEnemyUnit != null) {
             double distanceToEnemy = self.getDistanceTo(nearestEnemyUnit) + BRAVERY_ERROR;
             double[] closestDists = new double[3];
             Arrays.fill(closestDists, Double.MAX_VALUE);
@@ -357,10 +368,9 @@ public final class MyStrategy implements Strategy {
                     && closestDists[1] > distanceToEnemy
                     && closestDists[2] > distanceToEnemy) isBraveEnough = false;
         }
-        // TODO: think about this check
-//            if (self.getLife() < self.getMaxLife() * LOW_HP_FACTOR && previousWayPoint != wayPoints[0])
-//                isBraveEnough = false;
-//        }
+
+        if (self.getLife() < self.getMaxLife() * 0.11 && wayPoints.getPreviousWayPointIndex() > 0)
+            isBraveEnough = false;
 
         return isBraveEnough;
     }
