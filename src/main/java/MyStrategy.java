@@ -25,6 +25,8 @@ public final class MyStrategy implements Strategy {
     private int previousTickIndex;
     private boolean shouldCheckForBonuses;
     private boolean canCheckBonus;
+    private boolean shouldReturnFromBonus;
+    private boolean centralWayPointIsPassed;
 
     // SELF
     private LivingUnit nearestEnemyUnit;
@@ -57,7 +59,7 @@ public final class MyStrategy implements Strategy {
             friendFaction = self.getFaction();
             if (friendFaction == Faction.ACADEMY) enemyFaction = Faction.RENEGADES;
             else enemyFaction = Faction.ACADEMY;
-            shouldCheckForBonuses = true;
+            shouldCheckForBonuses = false;
             wayPoints = new WayPoints(self, game);
             collisionHandler = new CollisionHandler();
         }
@@ -81,6 +83,7 @@ public final class MyStrategy implements Strategy {
         if (world.getTickIndex() % game.getBonusAppearanceIntervalTicks() == 0) {
             shouldCheckForBonuses = true;
             canCheckBonus = false;
+            centralWayPointIsPassed = false;
         }
 
         if (shouldCheckForBonuses && !canCheckBonus) canCheckBonus = areBonusesReachable();
@@ -111,11 +114,14 @@ public final class MyStrategy implements Strategy {
         units.addAll(visibleNeutralMinionsByMe);
         units.addAll(visibleTreesByMe);
 
-        if (canCheckBonus) checkForBonuses();
-        else if (isUnitInVisionRange(nearestEnemyUnit))
-            moveAgainstUnit(wayPoints.getPreviousWayPoint(), nearestEnemyUnit);
-        else if (isUnitInStaffRange(nearestTree)) moveAgainstUnit(wayPoints.getNextWayPoint(), nearestTree);
-        else moveTowardsWayPoint(wayPoints.getNextWayPoint());
+        Point2D wayPointToGo = determineWayPointToGo();
+
+        if (canCheckBonus) {
+            if (isUnitInStaffRange(nearestTree)) moveAgainstUnit(wayPointToGo, nearestTree);
+            else moveTowardsWayPoint(wayPointToGo);
+        } else if (isUnitInVisionRange(nearestEnemyUnit)) moveAgainstUnit(wayPointToGo, nearestEnemyUnit);
+        else if (isUnitInStaffRange(nearestTree)) moveAgainstUnit(wayPointToGo, nearestTree);
+        else moveTowardsWayPoint(wayPointToGo);
 
         collisionHandler.handleSingleCollision(units, self, move);
     }
@@ -253,18 +259,30 @@ public final class MyStrategy implements Strategy {
 
     private boolean areBonusesReachable() {
         return ((wayPoints.getCurrentLane() != LaneType.MIDDLE &&
-                wayPoints.getNextWayPointIndex() - 1 == 10)
-//                wayPoints.getNextWayPointIndex() - 1 >= 9 &&
-//                wayPoints.getNextWayPointIndex() - 1 <= 13)
+//                wayPoints.getNextWayPointIndex() - 1 == 10)
+                wayPoints.getNextWayPointIndex() - 1 >= 9 &&
+                wayPoints.getNextWayPointIndex() - 1 <= 14)
                 || (wayPoints.getCurrentLane() == LaneType.MIDDLE &&
-                wayPoints.getNextWayPointIndex() - 1 == 9));
-//                wayPoints.getNextWayPointIndex() - 1 >= 8 &&
-//                wayPoints.getNextWayPointIndex() - 1 <= 10);
+//                wayPoints.getNextWayPointIndex() - 1 == 9));
+                wayPoints.getNextWayPointIndex() - 1 >= 9 &&
+                wayPoints.getNextWayPointIndex() - 1 <= 11));
+    }
+
+    private Point2D determineWayPointToGo() {
+        Point2D pointToGo;
+        if (canCheckBonus) pointToGo = getBonusWayPoint();
+        else if (shouldReturnFromBonus) {
+            pointToGo = wayPoints.getCentralPoint();
+            if (pointToGo.getDistanceTo(self) <= WayPoints.WAY_POINT_RADIUS) shouldReturnFromBonus = false;
+        } else if (isUnitInVisionRange(nearestEnemyUnit)) pointToGo = wayPoints.getPreviousWayPoint();
+        else pointToGo = wayPoints.getNextWayPoint();
+        return pointToGo;
     }
 
     // TODO: check for both bonuses at middle lane
-    private void checkForBonuses() {
+    private Point2D getBonusWayPoint() {
         Point2D wayPoint;
+        Point2D centralPoint = wayPoints.getCentralPoint();
         Point2D[] bonusWayPoints = wayPoints.getBonusWayPoints();
         if (bonusWayPoints.length == 1) wayPoint = bonusWayPoints[0];
         else wayPoint = bonusWayPoints[0].getDistanceTo(self) < bonusWayPoints[1].getDistanceTo(self)
@@ -285,15 +303,19 @@ public final class MyStrategy implements Strategy {
             }
         }
 
-        if (isBonusInPlace) {
-            if (isUnitInCastRange(nearestEnemyUnit) && isBraveEnough)
-                moveAgainstUnit(wayPoint, nearestEnemyUnit);
-            else if (isUnitInStaffRange(nearestTree)) moveAgainstUnit(wayPoint, nearestTree);
-            else moveTowardsWayPoint(wayPoint);
-        } else {
+        if (!centralWayPointIsPassed &&
+                centralPoint.getDistanceTo(self) <= WayPoints.WAY_POINT_RADIUS) centralWayPointIsPassed = true;
+
+        if (!isBonusInPlace) {
             shouldCheckForBonuses = false;
             canCheckBonus = false;
+            if (centralWayPointIsPassed) shouldReturnFromBonus = true;
+            wayPoint = centralPoint;
+        } else if (!centralWayPointIsPassed && centralPoint.getDistanceTo(self) > WayPoints.WAY_POINT_RADIUS) {
+            wayPoint = centralPoint;
         }
+
+        return wayPoint;
     }
 
 //    // TODO: review

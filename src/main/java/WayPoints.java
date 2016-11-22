@@ -6,7 +6,7 @@ import static java.lang.StrictMath.*;
 
 @SuppressWarnings("WeakerAccess")
 public class WayPoints {
-    private static final double WAY_POINT_RADIUS = sqrt(80000.0) + 70.0;
+    public static final double WAY_POINT_RADIUS = sqrt(80000.0) + 70.0;
     private static final double WAY_POINT_RANGE = 90.0;
 
     private Map<LaneType, Point2D[]> pointsByLane;
@@ -168,6 +168,22 @@ public class WayPoints {
 
     public boolean isLaneDetermined() {
         return currentLane != null;
+    }
+
+    public Point2D getCentralPoint() {
+        Point2D centralPoint;
+        switch (currentLane) {
+            case TOP:
+            case BOTTOM:
+                centralPoint = currentLaneWayPoints[11];
+                break;
+            case MIDDLE:
+                centralPoint = currentLaneWayPoints[9];
+                break;
+            default:
+                throw new EnumConstantNotPresentException(LaneType.class, "No such lane type");
+        }
+        return centralPoint;
     }
 
     // PRIVATE METHODS
