@@ -44,15 +44,16 @@ public final class MyStrategy implements Strategy {
 
     @Override
     public void move(Wizard self, World world, Game game, Move move) {
-        if (world.getTickIndex() < 120) return;
-        initializeStrategy(self, game);
-        initializeTick(self, world, game, move);
-        handleSkillLearning();
-        handleActionExecution();
-        handleMovement();
-        handleMasterManagement();
-        previousTickLife = self.getLife();
-        previousTickIndex = world.getTickIndex();
+        if (random == null) initializeStrategy(self, game);
+        if (self.isMaster()) handleMasterManagement(self, world, game, move);
+        if (world.getTickIndex() >= Constants.START_GAME_HOLD) {
+            initializeTick(self, world, game, move);
+            handleSkillLearning();
+            handleActionExecution();
+            handleMovement();
+            previousTickLife = self.getLife();
+            previousTickIndex = world.getTickIndex();
+        }
     }
 
     private void initializeStrategy(Wizard self, Game game) {
@@ -73,7 +74,7 @@ public final class MyStrategy implements Strategy {
         this.move = move;
 
         if (world.getTickIndex() - previousTickIndex > 1 || !wayPoints.isLaneDetermined()) {
-            wayPoints.determineWayToGo(world, game, friendFaction);
+            wayPoints.determineWayToGo(self, world, game, friendFaction);
             isInitialBonusCheck = shouldCheckForBonus = previousTickIndex == 0;
         }
 
@@ -145,7 +146,31 @@ public final class MyStrategy implements Strategy {
         collisionHandler.handleSingleCollision(visibleUnitsByMe, self, move);
     }
 
-    private void handleMasterManagement() {
+    private void handleMasterManagement(Wizard self, World world, Game game, Move move) {
+        Message[] messages = new Message[4];
+        int index;
+        for (Wizard wizard : world.getWizards()) {
+            if (wizard.isMe() || wizard.getFaction() != self.getFaction()) continue;
+            index = (int) wizard.getId() - 1;
+            if (index >= self.getId()) index--;
+            switch (index % 5) {
+                case 0:
+                case 1:
+                    messages[index % 5] =
+                            new Message(LaneType.TOP, SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1, new byte[0]);
+                    break;
+                case 2:
+                case 3:
+                    messages[index % 5] =
+                            new Message(LaneType.MIDDLE, SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1, new byte[0]);
+                    break;
+                default:
+                    messages[index % 5] =
+                            new Message(LaneType.BOTTOM, SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1, new byte[0]);
+                    break;
+            }
+        }
+        move.setMessages(messages);
     }
 
     /*
@@ -360,7 +385,7 @@ public final class MyStrategy implements Strategy {
                     Constants.VISION_ERROR + game.getBonusRadius() <= wizard.getVisionRange()) {
                 if ((didSeeBonus && bonusToTake == null) ||
                         isInitialBonusCheck ||
-                        (!didSeeBonus && (world.getTickIndex() - 3) % game.getBonusAppearanceIntervalTicks() == 0)) {
+                        (!didSeeBonus && ((world.getTickIndex() - 5) % game.getBonusAppearanceIntervalTicks() <= 1250))) {
                     isBonusInPlace = false;
                     didSeeBonus = true;
                 }
@@ -374,7 +399,7 @@ public final class MyStrategy implements Strategy {
             shouldReturnFromBonus = true;
             wayPoint = wayPoints.getWayPointBeforeBonus();
         } else if (!didSeeBonus) {
-            double delta = game.getBonusRadius() + self.getRadius() + 3.0;
+            double delta = game.getBonusRadius() + self.getRadius() + 0.1;
             if (wayPoints.getCurrentLane() == LaneType.TOP)
                 wayPoint = new Point2D(wayPoint.getX() - delta, wayPoint.getY() - delta);
             else if (wayPoints.getCurrentLane() == LaneType.BOTTOM)

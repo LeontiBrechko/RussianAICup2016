@@ -74,8 +74,8 @@ public class WayPoints {
 
     // PUBLIC METHODS
 
-    public void determineWayToGo(World world, Game game, Faction friendFaction) {
-        currentLane = determineLane(world, friendFaction);
+    public void determineWayToGo(Wizard self, World world, Game game, Faction friendFaction) {
+        currentLane = determineLane(self, world, friendFaction);
         currentLaneWayPoints = pointsByLane.get(currentLane);
         bonusWayPoints = getBonusWayPoints(game);
     }
@@ -200,14 +200,26 @@ public class WayPoints {
         pointsByLane.put(LaneType.BOTTOM, bottom);
     }
 
-    private LaneType determineLane(World world, Faction friendFaction) {
-        LaneType lane;
+    private LaneType determineLane(Wizard self, World world, Faction friendFaction) {
+        LaneType lane = null;
+        Message[] messages = self.getMessages();
+        if (!self.isMaster() && messages != null) {
+            for (int i = messages.length; i >= 0; i--) {
+                if (messages[i] != null && messages[i].getLane() != null) {
+                    lane = messages[i].getLane();
+                    break;
+                }
+            }
+        }
+
+        if (lane != null) return lane;
+
         HashSet<Long> ids = new HashSet<>();
         int topCount = 0;
         int middleCount = 0;
         int bottomCount = 0;
 
-        if (world.getTickIndex() <= 200) {
+        if (world.getTickIndex() < Constants.START_GAME_HOLD) {
             double topAngle, middleAngle, bottomAngle, minAngle;
             Point2D top = pointsByLane.get(LaneType.TOP)[5];
             Point2D middle = pointsByLane.get(LaneType.MIDDLE)[5];
@@ -234,8 +246,8 @@ public class WayPoints {
 
         // TODO: check properly when don't have enough wizards
         int min = min(topCount, min(middleCount, bottomCount));
-        if (min == topCount) lane = LaneType.TOP;
-        else if (min == middleCount) lane = LaneType.MIDDLE;
+        if (min == middleCount) lane = LaneType.MIDDLE;
+        else if (min == topCount) lane = LaneType.TOP;
         else lane = LaneType.BOTTOM;
         return lane;
     }
