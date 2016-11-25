@@ -6,8 +6,6 @@ import static java.lang.StrictMath.*;
 
 @SuppressWarnings("WeakerAccess")
 public class CollisionHandler {
-    private static final double COLLISION_ERROR = 7.6;
-
     public void handleSingleCollision(ArrayDeque<LivingUnit> visibleUnitsByMe, Wizard self, Move move) {
         double minDistance = Double.MAX_VALUE;
         // TODO: fix collision when self has multiple collisions
@@ -32,6 +30,7 @@ public class CollisionHandler {
     }
 
     public boolean isColliding(LivingUnit unit, Wizard self) {
-        return unit != null && self.getDistanceTo(unit) <= self.getRadius() + unit.getRadius() + COLLISION_ERROR;
+        return unit != null && self.getDistanceTo(unit) <= self.getRadius() + unit.getRadius() +
+                Constants.COLLISION_ERROR;
     }
 }

@@ -17,6 +17,7 @@ public class WayPoints {
     private Point2D nextWayPoint;
     private Point2D previousWayPoint;
     private Point2D closestWayPoint;
+    private Point2D wayPointBeforeBonus;
 
     public WayPoints(Wizard self, Game game) {
         resetCurrentLane();
@@ -57,6 +58,18 @@ public class WayPoints {
 
     public Point2D getPreviousWayPoint() {
         return previousWayPoint;
+    }
+
+    public Point2D getClosestWayPoint() {
+        return closestWayPoint;
+    }
+
+    public Point2D getWayPointBeforeBonus() {
+        return wayPointBeforeBonus;
+    }
+
+    public void setWayPointBeforeBonus(Point2D wayPointBeforeBonus) {
+        this.wayPointBeforeBonus = wayPointBeforeBonus;
     }
 
     // PUBLIC METHODS

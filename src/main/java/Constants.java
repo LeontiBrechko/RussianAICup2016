@@ -10,4 +10,7 @@ public class Constants {
     public static final double WAY_POINT_RADIUS = sqrt(80000.0) + 90.0;
     public static final double WAY_POINT_RANGE = 150.0;
     public static final int RUN_AWAY_COUNTDOWN = 40;
+    public static final double BONUS_VISION_ERROR = 100.0;
+    public static final int BONUS_AHEAD_TIME = 400;
+    public static final double COLLISION_ERROR = 7.6;
 }
