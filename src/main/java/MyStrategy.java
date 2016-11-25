@@ -76,8 +76,11 @@ public final class MyStrategy implements Strategy {
 
         if (world.getTickIndex() - previousTickIndex > 1 || !wayPoints.isLaneDetermined()) {
             wayPoints.determineWayToGo(self, world, game, friendFaction);
-            centralWayPointIsPassed = false;
+            shouldCheckForBonus = false;
+            canCheckBonus = false;
+            didSeeBonus = false;
             shouldReturnFromBonus = false;
+            centralWayPointIsPassed = false;
         }
 
         int bonusInterval = game.getBonusAppearanceIntervalTicks();
@@ -506,6 +509,8 @@ public final class MyStrategy implements Strategy {
         } else if (runAwayCountdown > 0 && wayPoints.getPreviousWayPointIndex() > 0)
             return BraveryLevel.RUN_FOREST_RUN;
 
+        if (canCheckBonus) return BraveryLevel.NEED_TO_GRAB_BONUS;
+
         Point2D[] currentWayPoints = wayPoints.getCurrentLaneWayPoints();
         if (wayPoints.getClosestWayPointIndex() >= currentWayPoints.length - 5) {
             Point2D lastSafeWayPoint = currentWayPoints[currentWayPoints.length - 5];
@@ -544,7 +549,6 @@ public final class MyStrategy implements Strategy {
                     && closestDists[2] > distanceToEnemy) return BraveryLevel.BETTER_TO_GO_BACK;
         }
 
-        if (canCheckBonus) return BraveryLevel.NEED_TO_GRAB_BONUS;
         if (isUnitInCastRange(nearestEnemyUnit)) return BraveryLevel.ENEMY_IN_CAST_RANGE;
 
         return BraveryLevel.I_AM_SUPERMAN;

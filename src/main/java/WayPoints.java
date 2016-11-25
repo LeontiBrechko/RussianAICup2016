@@ -246,9 +246,9 @@ public class WayPoints {
 
         // TODO: check properly when don't have enough wizards
         int min = min(topCount, min(middleCount, bottomCount));
-        if (min == middleCount) lane = LaneType.MIDDLE;
-        else if (min == topCount) lane = LaneType.TOP;
-        else lane = LaneType.BOTTOM;
+        if (min == topCount) lane = LaneType.TOP;
+        else if (min == bottomCount) lane = LaneType.BOTTOM;
+        else lane = LaneType.MIDDLE;
         return lane;
     }
 
