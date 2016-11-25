@@ -22,6 +22,7 @@ public final class MyStrategy implements Strategy {
     private boolean canCheckBonus;
     private boolean didSeeBonus;
     private boolean shouldReturnFromBonus;
+    private boolean centralWayPointIsPassed;
 
     // SELF
     private LivingUnit nearestEnemyUnit;
@@ -75,19 +76,30 @@ public final class MyStrategy implements Strategy {
 
         if (world.getTickIndex() - previousTickIndex > 1 || !wayPoints.isLaneDetermined()) {
             wayPoints.determineWayToGo(self, world, game, friendFaction);
-            isInitialBonusCheck = shouldCheckForBonus = previousTickIndex == 0;
+            centralWayPointIsPassed = false;
+            shouldReturnFromBonus = false;
         }
 
-        if ((world.getTickIndex() + Constants.BONUS_AHEAD_TIME) % game.getBonusAppearanceIntervalTicks() == 0) {
+        int bonusInterval = game.getBonusAppearanceIntervalTicks();
+        if (!shouldCheckForBonus &&
+                bonusInterval - (world.getTickIndex() % bonusInterval) <= getTimeNeededToTakeBonus() - 60) {
             shouldCheckForBonus = true;
             canCheckBonus = false;
             didSeeBonus = false;
             shouldReturnFromBonus = false;
+            centralWayPointIsPassed = false;
         }
 
         if (shouldCheckForBonus && !canCheckBonus) {
             canCheckBonus = areBonusesReachable();
-            if (canCheckBonus) wayPoints.setWayPointBeforeBonus(wayPoints.getClosestWayPoint());
+            if (canCheckBonus) {
+                if (wayPoints.getNextWayPointIndex() - 1 == 9 || wayPoints.getNextWayPointIndex() - 1 == 8) {
+                    centralWayPointIsPassed = true;
+                    wayPoints.setWayPointBeforeBonus(wayPoints.getClosestWayPoint());
+                } else {
+                    wayPoints.setWayPointBeforeBonus(wayPoints.getCentralPoint());
+                }
+            }
         }
 
         if (runAwayCountdown > 0) runAwayCountdown--;
@@ -362,6 +374,7 @@ public final class MyStrategy implements Strategy {
         }
 
         Point2D wayPoint;
+        Point2D centralPoint = wayPoints.getCentralPoint();
         Point2D[] bonusWayPoints = wayPoints.getBonusWayPoints();
         if (bonusWayPoints.length == 1) wayPoint = bonusWayPoints[0];
         else {
@@ -392,12 +405,17 @@ public final class MyStrategy implements Strategy {
             }
         }
 
+        if (!centralWayPointIsPassed && centralPoint.getDistanceTo(self) <= Constants.WAY_POINT_RADIUS)
+            centralWayPointIsPassed = true;
+
         if (!isBonusInPlace) {
             shouldCheckForBonus = false;
             canCheckBonus = false;
             if (isInitialBonusCheck) isInitialBonusCheck = false;
             shouldReturnFromBonus = true;
             wayPoint = wayPoints.getWayPointBeforeBonus();
+        } else if (!centralWayPointIsPassed && centralPoint.getDistanceTo(self) > Constants.WAY_POINT_RADIUS) {
+            wayPoint = centralPoint;
         } else if (!didSeeBonus) {
             double delta = game.getBonusRadius() + self.getRadius() + 0.1;
             if (wayPoints.getCurrentLane() == LaneType.TOP)
@@ -434,6 +452,19 @@ public final class MyStrategy implements Strategy {
             if (collisionHandler.isColliding(minion, self)) count++;
         }
         return count > 1;
+    }
+
+    private int getTimeNeededToTakeBonus() {
+        int closestIndex = wayPoints.getClosestWayPointIndex();
+        Point2D wayPoint;
+        Point2D[] bonusWayPoints = wayPoints.getBonusWayPoints();
+        double speed = 3.0;
+        if (bonusWayPoints.length == 1) wayPoint = bonusWayPoints[0];
+        else wayPoint = bonusWayPoints[0].getDistanceTo(self) < bonusWayPoints[1].getDistanceTo(self) ?
+                bonusWayPoints[0] : bonusWayPoints[1];
+        if (closestIndex <= 10 && closestIndex >= 8) return (int) floor(wayPoint.getDistanceTo(self) / speed);
+        else return (int) floor((wayPoints.getCentralPoint().getDistanceTo(self) +
+                wayPoints.getCentralPoint().getDistanceTo(wayPoint) - 170.0) / speed);
     }
 //    // TODO: review
 //    private double getSpeedVectorNorm() {

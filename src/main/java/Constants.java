@@ -11,7 +11,7 @@ public class Constants {
     public static final double WAY_POINT_RANGE = 150.0;
     public static final int RUN_AWAY_COUNTDOWN = 40;
     public static final double BONUS_VISION_ERROR = 100.0;
-    public static final int BONUS_AHEAD_TIME = 400;
+    public static final int BONUS_AHEAD_TIME = 380;
     public static final double COLLISION_ERROR = 7.6;
     public static final int START_GAME_HOLD = 120;
 }
