@@ -204,7 +204,7 @@ public class WayPoints {
         LaneType lane = null;
         Message[] messages = self.getMessages();
         if (!self.isMaster() && messages != null) {
-            for (int i = messages.length; i >= 0; i--) {
+            for (int i = messages.length - 1; i >= 0; i--) {
                 if (messages[i] != null && messages[i].getLane() != null) {
                     lane = messages[i].getLane();
                     break;
