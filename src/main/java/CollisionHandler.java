@@ -11,9 +11,11 @@ public class CollisionHandler {
         // TODO: fix collision when self has multiple collisions
         LivingUnit collision = null;
         double currentDistance;
+        int count = 0;
 
         for (LivingUnit unit : visibleUnitsByMe) {
             if (isColliding(unit, self)) {
+                count++;
                 currentDistance = self.getDistanceTo(unit);
                 if (currentDistance < minDistance) {
                     minDistance = currentDistance;
@@ -22,7 +24,7 @@ public class CollisionHandler {
             }
         }
 
-        if (collision != null) {
+        if (collision != null && count == 1) {
             if (self.getAngleTo(collision) < 0) move.setStrafeSpeed(8.0);
             else move.setStrafeSpeed(-8.0);
             move.setSpeed(0.0);

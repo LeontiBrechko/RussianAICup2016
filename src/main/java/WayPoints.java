@@ -219,7 +219,7 @@ public class WayPoints {
         int middleCount = 0;
         int bottomCount = 0;
 
-        if (world.getTickIndex() < Constants.START_GAME_HOLD) {
+        if (world.getTickIndex() <= Constants.START_GAME_HOLD) {
             double topAngle, middleAngle, bottomAngle, minAngle;
             Point2D top = pointsByLane.get(LaneType.TOP)[5];
             Point2D middle = pointsByLane.get(LaneType.MIDDLE)[5];
