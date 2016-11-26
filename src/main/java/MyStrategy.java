@@ -575,14 +575,15 @@ public final class MyStrategy implements Strategy {
     }
 
     private double getSafeRange(LivingUnit unit) {
-        if (unit instanceof Wizard || unit instanceof Building) return self.getCastRange();
-        else if (unit instanceof Minion) {
-            if (((Minion) unit).getType() == MinionType.FETISH_BLOWDART) {
-                return unit.getRadius() + self.getRadius() + game.getFetishBlowdartAttackRange() + Constants.SAFE_RANGE;
-            } else {
-                return unit.getRadius() + self.getRadius() + game.getOrcWoodcutterAttackRange() + Constants.SAFE_RANGE;
-            }
-        } else return unit.getRadius() + self.getRadius() + Constants.SAFE_RANGE;
+//        if (unit instanceof Wizard || unit instanceof Building) return self.getCastRange();
+//        else if (unit instanceof Minion) {
+//            if (((Minion) unit).getType() == MinionType.FETISH_BLOWDART) {
+//                return unit.getRadius() + self.getRadius() + game.getFetishBlowdartAttackRange() + Constants.SAFE_RANGE;
+//            } else {
+//                return unit.getRadius() + self.getRadius() + game.getOrcWoodcutterAttackRange() + Constants.SAFE_RANGE;
+//            }
+//        } else return unit.getRadius() + self.getRadius() + Constants.SAFE_RANGE;
+        return self.getCastRange();
     }
 
     private BraveryLevel getBraveryLevel() {
