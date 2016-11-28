@@ -49,7 +49,7 @@ public final class MyStrategy implements Strategy {
         if (self.isMaster()) handleMasterManagement(self, world, game, move);
         if (world.getTickIndex() >= Constants.START_GAME_HOLD) {
             initializeTick(self, world, game, move);
-            handleSkillLearning();
+            if (game.isSkillsEnabled()) handleSkillLearning();
             handleActionExecution();
             handleMovement();
             previousTickLife = self.getLife();
@@ -118,6 +118,18 @@ public final class MyStrategy implements Strategy {
     }
 
     private void handleSkillLearning() {
+        HashSet<SkillType> skills = new HashSet<>(Arrays.asList(self.getSkills()));
+        System.out.printf("%d: ", world.getTickIndex());
+        for (SkillType skillType : skills) {
+            System.out.printf("%s ", skillType);
+        }
+        System.out.println();
+        for (int i = 0; i < Constants.SKILLS_TO_LEARN.length; i++) {
+            if (!skills.contains(Constants.SKILLS_TO_LEARN[i])) {
+                move.setSkillToLearn(Constants.SKILLS_TO_LEARN[i]);
+                break;
+            }
+        }
     }
 
     private void handleActionExecution() {
@@ -166,20 +178,30 @@ public final class MyStrategy implements Strategy {
             if (wizard.isMe() || wizard.getFaction() != self.getFaction()) continue;
             index = (int) wizard.getId() - 1;
             if (index >= self.getId()) index--;
+
+            HashSet<SkillType> skills = new HashSet<>(Arrays.asList(wizard.getSkills()));
+            SkillType skillToLearn = Constants.SKILLS_TO_LEARN[0];
+            for (int i = 0; i < Constants.SKILLS_TO_LEARN.length; i++) {
+                if (!skills.contains(Constants.SKILLS_TO_LEARN[i])) {
+                    skillToLearn = Constants.SKILLS_TO_LEARN[i];
+                    break;
+                }
+            }
+
             switch (index % 5) {
                 case 0:
                 case 1:
                     messages[index % 5] =
-                            new Message(LaneType.TOP, SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1, new byte[0]);
+                            new Message(LaneType.TOP, skillToLearn, new byte[0]);
                     break;
                 case 2:
                 case 3:
                     messages[index % 5] =
-                            new Message(LaneType.MIDDLE, SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1, new byte[0]);
+                            new Message(LaneType.MIDDLE, skillToLearn, new byte[0]);
                     break;
                 default:
                     messages[index % 5] =
-                            new Message(LaneType.BOTTOM, SkillType.MAGICAL_DAMAGE_BONUS_PASSIVE_1, new byte[0]);
+                            new Message(LaneType.BOTTOM, skillToLearn, new byte[0]);
                     break;
             }
         }
