@@ -43,6 +43,9 @@ public final class MyStrategy implements Strategy {
     private int runAwayCountdown;
     private boolean shouldAttackNeutralMinion;
 
+    HashSet<SkillType> skills;
+    private int frostBoltCoolDown;
+
     @Override
     public void move(Wizard self, World world, Game game, Move move) {
         if (random == null) initializeStrategy(self, game);
@@ -54,6 +57,7 @@ public final class MyStrategy implements Strategy {
             handleMovement();
             previousTickLife = self.getLife();
             previousTickIndex = world.getTickIndex();
+            if (frostBoltCoolDown > 0) frostBoltCoolDown--;
         }
     }
 
@@ -118,12 +122,7 @@ public final class MyStrategy implements Strategy {
     }
 
     private void handleSkillLearning() {
-        HashSet<SkillType> skills = new HashSet<>(Arrays.asList(self.getSkills()));
-        System.out.printf("%d: ", world.getTickIndex());
-        for (SkillType skillType : skills) {
-            System.out.printf("%s ", skillType);
-        }
-        System.out.println();
+        skills = new HashSet<>(Arrays.asList(self.getSkills()));
         for (int i = 0; i < Constants.SKILLS_TO_LEARN.length; i++) {
             if (!skills.contains(Constants.SKILLS_TO_LEARN[i])) {
                 move.setSkillToLearn(Constants.SKILLS_TO_LEARN[i]);
@@ -138,9 +137,21 @@ public final class MyStrategy implements Strategy {
                 move.setAction(ActionType.STAFF);
                 move.setCastAngle(self.getAngleTo(targetToAttack));
             } else if (isUnitInCastRange(targetToAttack)) {
-                move.setAction(ActionType.MAGIC_MISSILE);
-                move.setMinCastDistance(self.getDistanceTo(targetToAttack) -
-                        targetToAttack.getRadius() + game.getMagicMissileRadius());
+                if (skills.contains(SkillType.FROST_BOLT) &&
+                        frostBoltCoolDown <= 0 &&
+                        !(targetToAttack instanceof Building) &&
+                        self.getMana() >= game.getFrostBoltManacost() &&
+                        !Arrays.stream(targetToAttack.getStatuses())
+                                .filter((status) -> status.getType() == StatusType.FROZEN).findAny().isPresent()) {
+                    move.setAction(ActionType.FROST_BOLT);
+                    move.setMinCastDistance(self.getDistanceTo(targetToAttack) -
+                            targetToAttack.getRadius() + game.getFrostBoltRadius());
+                    frostBoltCoolDown = game.getFrostBoltCooldownTicks() + 1;
+                } else {
+                    move.setAction(ActionType.MAGIC_MISSILE);
+                    move.setMinCastDistance(self.getDistanceTo(targetToAttack) -
+                            targetToAttack.getRadius() + game.getMagicMissileRadius());
+                }
                 move.setCastAngle(self.getAngleTo(targetToAttack));
             }
         }
