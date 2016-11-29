@@ -69,6 +69,7 @@ public final class MyStrategy implements Strategy {
             else enemyFaction = Faction.ACADEMY;
             wayPoints = new WayPoints(self, game);
             collisionHandler = new CollisionHandler();
+            skills = new HashSet<>();
         }
     }
 
