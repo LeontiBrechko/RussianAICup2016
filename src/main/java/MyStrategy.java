@@ -140,7 +140,6 @@ public final class MyStrategy implements Strategy {
             } else if (isUnitInCastRange(targetToAttack)) {
                 if (skills.contains(SkillType.FROST_BOLT) &&
                         frostBoltCoolDown <= 0 &&
-                        !(targetToAttack instanceof Building) &&
                         self.getMana() >= game.getFrostBoltManacost() &&
                         !Arrays.stream(targetToAttack.getStatuses())
                                 .filter((status) -> status.getType() == StatusType.FROZEN).findAny().isPresent()) {
@@ -274,6 +273,24 @@ public final class MyStrategy implements Strategy {
                 }
             }
         }
+    }
+
+    private Optional<LivingUnit> getNearestFriendUnit() {
+        double currentDistance;
+        double nearestFriendDistance = Float.MAX_VALUE;
+        LivingUnit nearestFriend = null;
+
+        for (UnitType unitType : Constants.LIVING_UNIT_TYPES) {
+            for (LivingUnit unit : visibleFriendUnitsByMe.get(unitType)) {
+                currentDistance = self.getDistanceTo(unit);
+                if (currentDistance + Constants.NEAREST_UNIT_ERROR < nearestFriendDistance) {
+                    nearestFriendDistance = currentDistance;
+                    nearestFriend = unit;
+                }
+            }
+        }
+
+        return Optional.ofNullable(nearestFriend);
     }
 
     private Optional<LivingUnit> getNearestEnemyUnit() {
@@ -573,6 +590,8 @@ public final class MyStrategy implements Strategy {
     }
 
     private boolean isUnitInVisionRange(Unit unit) {
+        if (unit != null && unit instanceof LivingUnit)
+            return self.getDistanceTo(unit) - ((LivingUnit) unit).getRadius() <= self.getVisionRange();
         return unit != null && self.getDistanceTo(unit) <= self.getVisionRange();
     }
 
@@ -581,6 +600,8 @@ public final class MyStrategy implements Strategy {
     }
 
     private boolean isUnitInCastRange(Unit unit) {
+        if (unit != null && unit instanceof LivingUnit)
+            return self.getDistanceTo(unit) - ((LivingUnit) unit).getRadius() <= self.getCastRange();
         return unit != null && self.getDistanceTo(unit) <= self.getCastRange();
     }
 
@@ -592,15 +613,15 @@ public final class MyStrategy implements Strategy {
 
     private boolean isUnitInSafeRange(Unit unit) {
         return unit instanceof LivingUnit &&
-                self.getDistanceTo(unit) <= getSafeRange((LivingUnit) unit);
+                self.getDistanceTo(unit) - ((LivingUnit) unit).getRadius() <= getSafeRange((LivingUnit) unit);
     }
 
     private double getSafeRange(LivingUnit unit) {
         if (unit instanceof Minion) {
             if (((Minion) unit).getType() == MinionType.FETISH_BLOWDART)
-                return self.getRadius() + unit.getRadius() + game.getFetishBlowdartAttackRange() + 5.0;
+                return self.getRadius() + unit.getRadius() + game.getFetishBlowdartAttackRange() + 2.0;
             else
-                return self.getRadius() + unit.getRadius() + 60.0;
+                return self.getRadius() + unit.getRadius() + 100.0;
         } else return self.getCastRange();
     }
 
