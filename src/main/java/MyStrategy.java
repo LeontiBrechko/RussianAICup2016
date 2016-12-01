@@ -90,7 +90,7 @@ public final class MyStrategy implements Strategy {
 
         int bonusInterval = game.getBonusAppearanceIntervalTicks();
         if (!shouldCheckForBonus && world.getTickIndex() <= 17600 &&
-                bonusInterval - (world.getTickIndex() % bonusInterval) <= getTimeNeededToTakeBonus() - 60) {
+                bonusInterval - (world.getTickIndex() % bonusInterval) <= getTimeNeededToTakeBonus() - 70) {
             shouldCheckForBonus = true;
             canCheckBonus = false;
             didSeeBonus = false;
@@ -355,13 +355,13 @@ public final class MyStrategy implements Strategy {
         if (weakestEnemyWizardInCastRange != null)
             return Optional.of(weakestEnemyWizardInCastRange);
 
-        Minion weakestEnemyFetishInCastRange = getWeakestEnemyMinionInCastRange(MinionType.FETISH_BLOWDART)
-                .orElse(null);
-        if (weakestEnemyFetishInCastRange != null) return Optional.of(weakestEnemyFetishInCastRange);
-        Minion weakestEnemyOrcInCastRange = getWeakestEnemyMinionInCastRange(MinionType.ORC_WOODCUTTER).orElse(null);
-        if (weakestEnemyOrcInCastRange != null) return Optional.of(weakestEnemyOrcInCastRange);
+        LivingUnit building = visibleEnemyUnitsByMe.get(UnitType.BUILDING).peekFirst();
+        if (isUnitInCastRange(building)) return Optional.of(building);
 
-        return Optional.ofNullable((visibleEnemyUnitsByMe.get(UnitType.BUILDING).peekFirst()));
+        Minion weakestEnemyFetishInCastRange =
+                getWeakestEnemyMinionInCastRange(MinionType.FETISH_BLOWDART).orElse(null);
+        if (weakestEnemyFetishInCastRange != null) return Optional.of(weakestEnemyFetishInCastRange);
+        return Optional.ofNullable(getWeakestEnemyMinionInCastRange(MinionType.ORC_WOODCUTTER).orElse(null));
     }
 
     private Optional<Wizard> getWeakestEnemyWizardInCastRange() {
@@ -372,7 +372,7 @@ public final class MyStrategy implements Strategy {
         for (LivingUnit wizard : visibleEnemyUnitsByMe.get(UnitType.WIZARD)) {
             if (isUnitInCastRange(wizard)) {
                 currentLife = wizard.getLife();
-                if (currentLife + game.getMagicMissileDirectDamage() - 1 < weakestEnemyWizardLife) {
+                if (currentLife < weakestEnemyWizardLife) {
                     weakestEnemyWizardLife = currentLife;
                     weakestEnemyWizard = (Wizard) wizard;
                 }
@@ -391,7 +391,7 @@ public final class MyStrategy implements Strategy {
             if (((Minion) minion).getType() != minionType) continue;
             if (isUnitInCastRange(minion)) {
                 currentLife = minion.getLife();
-                if (currentLife + game.getMagicMissileDirectDamage() - 1 < weakestEnemyMinionLife) {
+                if (currentLife < weakestEnemyMinionLife) {
                     weakestEnemyMinionLife = currentLife;
                     weakestEnemyMinion = (Minion) minion;
                 }
@@ -432,7 +432,8 @@ public final class MyStrategy implements Strategy {
     private void moveTowardsWayPoint(Point2D wayPoint) {
         double distanceToPoint = self.getDistanceTo(wayPoint.getX(), wayPoint.getY());
         double angleToPoint = self.getAngleTo(wayPoint.getX(), wayPoint.getY());
-        if (isUnitInCastRange(targetToAttack)) move.setTurn(self.getAngleTo(targetToAttack));
+        if (isUnitInVisionRange(targetToAttack)) move.setTurn(self.getAngleTo(targetToAttack));
+        else if (isUnitInVisionRange(nearestEnemyUnit)) move.setTurn(self.getAngleTo(nearestEnemyUnit));
         else move.setTurn(angleToPoint);
         move.setSpeed(cos(angleToPoint) * distanceToPoint);
         move.setStrafeSpeed(sin(angleToPoint) * distanceToPoint);
@@ -442,11 +443,11 @@ public final class MyStrategy implements Strategy {
         return ((wayPoints.getCurrentLane() != LaneType.MIDDLE &&
 //                wayPoints.getNextWayPointIndex() - 1 == 10)
                 wayPoints.getNextWayPointIndex() - 1 >= 9 &&
-                wayPoints.getNextWayPointIndex() - 1 <= 15)
+                wayPoints.getNextWayPointIndex() - 1 <= 14)
                 || (wayPoints.getCurrentLane() == LaneType.MIDDLE &&
 //                wayPoints.getNextWayPointIndex() - 1 == 9));
                 wayPoints.getNextWayPointIndex() - 1 >= 9 &&
-                wayPoints.getNextWayPointIndex() - 1 <= 12));
+                wayPoints.getNextWayPointIndex() - 1 <= 11));
     }
 
     private Point2D getWayPointToGo() {
@@ -487,8 +488,7 @@ public final class MyStrategy implements Strategy {
         }
 
         for (Wizard wizard : world.getWizards()) {
-            if (wayPoint.getDistanceTo(wizard) +
-                    Constants.VISION_ERROR + game.getBonusRadius() <= wizard.getVisionRange()) {
+            if (wayPoint.getDistanceTo(wizard) + game.getBonusRadius() <= wizard.getVisionRange()) {
                 if ((didSeeBonus && bonusToTake == null) ||
                         isInitialBonusCheck ||
                         (!didSeeBonus && ((world.getTickIndex() - 5) % game.getBonusAppearanceIntervalTicks() <= 2000))) {
@@ -529,14 +529,14 @@ public final class MyStrategy implements Strategy {
         if (braveryLevel == BraveryLevel.RUN_FOREST_RUN) {
             if (nearestEnemyUnit != null)
                 return wayPoints.getCurrentLaneWayPoints()
-                        [max(wayPoints.getNearestEnemyWayPointIndex(nearestEnemyUnit) - 2, 0)];
+                        [max(wayPoints.getNearestEnemyWayPointIndex(nearestEnemyUnit) - 3, 0)];
             else {
                 Point2D[] wayPoints = this.wayPoints.getCurrentLaneWayPoints();
                 for (int i = 0; i < wayPoints.length; i++) {
                     for (UnitType unitType : Constants.LIVING_UNIT_TYPES) {
                         for (LivingUnit unit : visibleEnemyUnitsByMe.get(unitType)) {
                             if (wayPoints[i].getDistanceTo(unit) <= Constants.WAY_POINT_RADIUS) {
-                                return wayPoints[max(i - 2, 0)];
+                                return wayPoints[max(i - 3, 0)];
                             }
                         }
                     }
@@ -569,24 +569,11 @@ public final class MyStrategy implements Strategy {
                 bonusWayPoints[0] : bonusWayPoints[1];
         if (closestIndex <= 10 && closestIndex >= 8) return (int) floor(wayPoint.getDistanceTo(self) / speed);
         else return (int) floor((wayPoints.getCentralPoint().getDistanceTo(self) +
-                wayPoints.getCentralPoint().getDistanceTo(wayPoint) - 170.0) / speed);
+                wayPoints.getCentralPoint().getDistanceTo(wayPoint) - 180.0) / speed);
     }
-//    // TODO: review
-//    private double getSpeedVectorNorm() {
-//        double speed = move.getSpeed();
-//        double maxSpeed = speed >= 0.0 ? game.getWizardForwardSpeed() : game.getWizardBackwardSpeed();
-//        double strafeSpeed = move.getStrafeSpeed();
-//        double maxStrafeSpeed = game.getWizardStrafeSpeed();
-//        double border = sqrt(pow(speed / maxSpeed, 2) + pow(strafeSpeed / maxStrafeSpeed, 2));
-//        if (border > 1.0) {
-//            speed /= border;
-//            strafeSpeed /= border;
-//        }
-//        return hypot(strafeSpeed, speed);
-//    }
 
     private boolean isUnitInVisionRange(Unit unit) {
-        return unit != null && self.getDistanceTo(unit) + Constants.VISION_ERROR <= self.getVisionRange();
+        return unit != null && self.getDistanceTo(unit) <= self.getVisionRange();
     }
 
     private boolean isUnitInStaffSector(Unit unit) {
@@ -594,7 +581,7 @@ public final class MyStrategy implements Strategy {
     }
 
     private boolean isUnitInCastRange(Unit unit) {
-        return unit != null && self.getDistanceTo(unit) + Constants.VISION_ERROR <= self.getCastRange();
+        return unit != null && self.getDistanceTo(unit) <= self.getCastRange();
     }
 
     private boolean isUnitInStaffRange(Unit unit) {
@@ -605,30 +592,25 @@ public final class MyStrategy implements Strategy {
 
     private boolean isUnitInSafeRange(Unit unit) {
         return unit instanceof LivingUnit &&
-                self.getDistanceTo(unit) + Constants.VISION_ERROR <= getSafeRange((LivingUnit) unit);
+                self.getDistanceTo(unit) <= getSafeRange((LivingUnit) unit);
     }
 
     private double getSafeRange(LivingUnit unit) {
-//        if (unit instanceof Wizard || unit instanceof Building) return self.getCastRange();
-//        else if (unit instanceof Minion) {
-//            if (((Minion) unit).getType() == MinionType.FETISH_BLOWDART) {
-//                return unit.getRadius() + self.getRadius() + game.getFetishBlowdartAttackRange() + Constants.SAFE_RANGE;
-//            } else {
-//                return unit.getRadius() + self.getRadius() + game.getOrcWoodcutterAttackRange() + Constants.SAFE_RANGE;
-//            }
-//        } else return unit.getRadius() + self.getRadius() + Constants.SAFE_RANGE;
-        return self.getCastRange();
+        if (unit instanceof Minion) {
+            if (((Minion) unit).getType() == MinionType.FETISH_BLOWDART)
+                return self.getRadius() + unit.getRadius() + game.getFetishBlowdartAttackRange() + 5.0;
+            else
+                return self.getRadius() + unit.getRadius() + 60.0;
+        } else return self.getCastRange();
     }
 
     private BraveryLevel getBraveryLevel() {
-        if ((self.getLife() <= 24 || previousTickLife - self.getLife() >= 23)
+        if ((self.getLife() <= 37 || previousTickLife - self.getLife() >= 23)
                 && wayPoints.getPreviousWayPointIndex() > 0) {
             runAwayCountdown = Constants.RUN_AWAY_COUNTDOWN;
             return BraveryLevel.RUN_FOREST_RUN;
         } else if (runAwayCountdown > 0 && wayPoints.getPreviousWayPointIndex() > 0)
             return BraveryLevel.RUN_FOREST_RUN;
-
-        if (canCheckBonus) return BraveryLevel.NEED_TO_GRAB_BONUS;
 
         Point2D[] currentWayPoints = wayPoints.getCurrentLaneWayPoints();
         if (wayPoints.getClosestWayPointIndex() >= currentWayPoints.length - 5) {
@@ -679,6 +661,8 @@ public final class MyStrategy implements Strategy {
 
         if (isUnitInSafeRange(nearestEnemyUnit) || isUnitInSafeRange(targetToAttack))
             return BraveryLevel.ENEMY_IN_SAFE_RANGE;
+
+        if (canCheckBonus) return BraveryLevel.NEED_TO_GRAB_BONUS;
 
         return BraveryLevel.I_AM_SUPERMAN;
     }
