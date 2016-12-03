@@ -1,7 +1,7 @@
-import model.*;
+import model.SkillType;
 
+import static java.lang.StrictMath.sqrt;
 import static model.SkillType.*;
-import static java.lang.StrictMath.*;
 
 @SuppressWarnings("WeakerAccess")
 public class Constants {
@@ -23,4 +23,11 @@ public class Constants {
             MAGICAL_DAMAGE_BONUS_PASSIVE_2, MAGICAL_DAMAGE_BONUS_AURA_2, FROST_BOLT, MOVEMENT_BONUS_FACTOR_PASSIVE_1,
             MOVEMENT_BONUS_FACTOR_AURA_1, MOVEMENT_BONUS_FACTOR_PASSIVE_2, MOVEMENT_BONUS_FACTOR_AURA_2
     };
+
+    // Potential field constants
+    public static final int STEP_SIZE = 8;
+    public static final int NOT_PASSABLE_POTENTIAL = -5150;
+    public static final int COLLISION_RADIUS = 35;
+    public static final int COLLESION_BORDER_LENGTH = 3;
+    public static final int DEBUG_RANGE = 200;
 }

@@ -2,11 +2,12 @@ import model.*;
 
 import java.util.*;
 
-import static java.lang.StrictMath.*;
+import static java.lang.Math.*;
 
 @SuppressWarnings("WeakerAccess")
 public final class MyStrategy implements Strategy {
     private Random random;
+    private PFAgent pfAgent;
 
     private Wizard self;
     private World world;
@@ -15,9 +16,7 @@ public final class MyStrategy implements Strategy {
 
     // WORLD
     private WayPoints wayPoints;
-    private CollisionHandler collisionHandler;
     private int previousTickIndex;
-    private boolean isInitialBonusCheck;
     private boolean shouldCheckForBonus;
     private boolean canCheckBonus;
     private boolean didSeeBonus;
@@ -37,7 +36,6 @@ public final class MyStrategy implements Strategy {
 
     private BraveryLevel braveryLevel;
     private Faction friendFaction;
-    private Faction enemyFaction;
 
     private int previousTickLife;
     private int runAwayCountdown;
@@ -65,11 +63,9 @@ public final class MyStrategy implements Strategy {
         if (random == null) {
             random = new Random(game.getRandomSeed());
             friendFaction = self.getFaction();
-            if (friendFaction == Faction.ACADEMY) enemyFaction = Faction.RENEGADES;
-            else enemyFaction = Faction.ACADEMY;
             wayPoints = new WayPoints(self, game);
-            collisionHandler = new CollisionHandler();
             skills = new HashSet<>();
+            pfAgent = new PFAgent();
         }
     }
 
@@ -133,11 +129,11 @@ public final class MyStrategy implements Strategy {
     }
 
     private void handleActionExecution() {
-        if (isUnitInStaffSector(targetToAttack)) {
-            if (isUnitInStaffRange(targetToAttack)) {
+        if (Utils.isUnitInStaffSector(self, targetToAttack, game)) {
+            if (Utils.isUnitInStaffRange(self, targetToAttack)) {
                 move.setAction(ActionType.STAFF);
                 move.setCastAngle(self.getAngleTo(targetToAttack));
-            } else if (isUnitInCastRange(targetToAttack)) {
+            } else if (Utils.isUnitInCastRange(self, targetToAttack)) {
                 if (skills.contains(SkillType.FROST_BOLT) &&
                         frostBoltCoolDown <= 0 &&
                         self.getMana() >= game.getFrostBoltManacost() &&
@@ -158,15 +154,7 @@ public final class MyStrategy implements Strategy {
     }
 
     private void handleMovement() {
-        ArrayDeque<LivingUnit> visibleUnitsByMe = new ArrayDeque<>();
-        for (UnitType unitType : Constants.LIVING_UNIT_TYPES) {
-            visibleUnitsByMe.addAll(visibleEnemyUnitsByMe.get(unitType));
-            visibleUnitsByMe.addAll(visibleFriendUnitsByMe.get(unitType));
-        }
-        visibleUnitsByMe.addAll(visibleNeutralMinionsByMe);
-        visibleUnitsByMe.addAll(visibleTreesByMe);
-
-        Point2D wayPointToGo = getWayPointToGo();
+        Point2D wayPointToGo = pfAgent.handleNextTick(self, world, game, getWayPointToGo());
 
         switch (braveryLevel) {
             case RUN_FOREST_RUN:
@@ -178,8 +166,6 @@ public final class MyStrategy implements Strategy {
                 moveTowardsWayPoint(wayPointToGo);
                 break;
         }
-
-        collisionHandler.handleSingleCollision(visibleUnitsByMe, self, move);
     }
 
     private void handleMasterManagement(Wizard self, World world, Game game, Move move) {
@@ -253,7 +239,7 @@ public final class MyStrategy implements Strategy {
             }
 
             for (LivingUnit unit : units) {
-                if (!isUnitInVisionRange(unit)
+                if (!Utils.isUnitInVisionRange(self, unit)
                         || (unit instanceof Wizard && ((Wizard) unit).isMe())) continue;
                 switch (unit.getFaction()) {
                     case RENEGADES:
@@ -273,24 +259,6 @@ public final class MyStrategy implements Strategy {
                 }
             }
         }
-    }
-
-    private Optional<LivingUnit> getNearestFriendUnit() {
-        double currentDistance;
-        double nearestFriendDistance = Float.MAX_VALUE;
-        LivingUnit nearestFriend = null;
-
-        for (UnitType unitType : Constants.LIVING_UNIT_TYPES) {
-            for (LivingUnit unit : visibleFriendUnitsByMe.get(unitType)) {
-                currentDistance = self.getDistanceTo(unit);
-                if (currentDistance + Constants.NEAREST_UNIT_ERROR < nearestFriendDistance) {
-                    nearestFriendDistance = currentDistance;
-                    nearestFriend = unit;
-                }
-            }
-        }
-
-        return Optional.ofNullable(nearestFriend);
     }
 
     private Optional<LivingUnit> getNearestEnemyUnit() {
@@ -324,7 +292,7 @@ public final class MyStrategy implements Strategy {
                 nearestTreeDistance = currentDistance;
                 nearestTree = tree;
             }
-            if (isUnitInStaffRange(this.nearestTree) &&
+            if (Utils.isUnitInStaffRange(self, this.nearestTree) &&
                     this.nearestTree.getId() == tree.getId()) isNearestTreeStillVisible = true;
         }
 
@@ -345,7 +313,7 @@ public final class MyStrategy implements Strategy {
                 nearestNeutralMinionDistance = currentDistance;
                 nearestNeutralMinion = minion;
             }
-            if (isUnitInStaffRange(this.nearestNeutralMinion) &&
+            if (Utils.isUnitInStaffRange(self, this.nearestNeutralMinion) &&
                     this.nearestNeutralMinion.getId() == minion.getId())
                 isNearestNeutralMinionIsStillVisible = true;
         }
@@ -356,8 +324,7 @@ public final class MyStrategy implements Strategy {
     }
 
     private Optional<LivingUnit> getTargetToAttack() {
-        if (collisionHandler.isColliding(nearestTree, self)
-                || isUnitInStaffRange(nearestTree)) return Optional.of(nearestTree);
+        if (Utils.isUnitInCollisionRange(self, nearestTree)) return Optional.of(nearestTree);
 
         LivingUnit weakestEnemyInCastRange = getWeakestEnemyInCastRange().orElse(null);
         if (weakestEnemyInCastRange != null) return Optional.of(weakestEnemyInCastRange);
@@ -373,7 +340,7 @@ public final class MyStrategy implements Strategy {
             return Optional.of(weakestEnemyWizardInCastRange);
 
         LivingUnit building = visibleEnemyUnitsByMe.get(UnitType.BUILDING).peekFirst();
-        if (isUnitInCastRange(building)) return Optional.of(building);
+        if (Utils.isUnitInCastRange(self, building)) return Optional.of(building);
 
         Minion weakestEnemyFetishInCastRange =
                 getWeakestEnemyMinionInCastRange(MinionType.FETISH_BLOWDART).orElse(null);
@@ -387,7 +354,7 @@ public final class MyStrategy implements Strategy {
         Wizard weakestEnemyWizard = null;
 
         for (LivingUnit wizard : visibleEnemyUnitsByMe.get(UnitType.WIZARD)) {
-            if (isUnitInCastRange(wizard)) {
+            if (Utils.isUnitInCastRange(self, wizard)) {
                 currentLife = wizard.getLife();
                 if (currentLife < weakestEnemyWizardLife) {
                     weakestEnemyWizardLife = currentLife;
@@ -406,7 +373,7 @@ public final class MyStrategy implements Strategy {
 
         for (LivingUnit minion : visibleEnemyUnitsByMe.get(UnitType.MINION)) {
             if (((Minion) minion).getType() != minionType) continue;
-            if (isUnitInCastRange(minion)) {
+            if (Utils.isUnitInCastRange(self, minion)) {
                 currentLife = minion.getLife();
                 if (currentLife < weakestEnemyMinionLife) {
                     weakestEnemyMinionLife = currentLife;
@@ -420,7 +387,7 @@ public final class MyStrategy implements Strategy {
 
     private void moveAgainstNearestEnemyUnit(Point2D wayPoint) {
         double speedVectorNorm;
-        if (isUnitInVisionRange(nearestEnemyUnit) &&
+        if (Utils.isUnitInVisionRange(self, nearestEnemyUnit) &&
                 (braveryLevel == BraveryLevel.I_AM_SUPERMAN || braveryLevel == BraveryLevel.ENEMY_IN_SAFE_RANGE)) {
             double cosAlpha = cos(abs(self.getAngleTo(wayPoint.getX(), wayPoint.getY())));
             double a = self.getDistanceTo(nearestEnemyUnit);
@@ -431,7 +398,7 @@ public final class MyStrategy implements Strategy {
 
         double speedVectorAngle = self.getAngleTo(wayPoint.getX(), wayPoint.getY());
 
-        if (isUnitInCastRange(targetToAttack)) move.setTurn(self.getAngleTo(targetToAttack));
+        if (Utils.isUnitInCastRange(self, targetToAttack)) move.setTurn(self.getAngleTo(targetToAttack));
         else move.setTurn(speedVectorAngle);
         move.setSpeed(cos(speedVectorAngle) * speedVectorNorm);
         move.setStrafeSpeed(sin(speedVectorAngle) * speedVectorNorm);
@@ -440,7 +407,7 @@ public final class MyStrategy implements Strategy {
     private void moveTowardsWayPointQuickly(Point2D wayPoint) {
         double distanceToPoint = self.getDistanceTo(wayPoint.getX(), wayPoint.getY());
         double angleToPoint = self.getAngleTo(wayPoint.getX(), wayPoint.getY());
-        if (isUnitInStaffRange(nearestEnemyUnit)) move.setTurn(self.getAngleTo(nearestEnemyUnit));
+        if (Utils.isUnitInStaffRange(self, nearestEnemyUnit)) move.setTurn(self.getAngleTo(nearestEnemyUnit));
         else move.setTurn(angleToPoint);
         move.setSpeed(cos(angleToPoint) * distanceToPoint);
         move.setStrafeSpeed(sin(angleToPoint) * distanceToPoint);
@@ -449,8 +416,8 @@ public final class MyStrategy implements Strategy {
     private void moveTowardsWayPoint(Point2D wayPoint) {
         double distanceToPoint = self.getDistanceTo(wayPoint.getX(), wayPoint.getY());
         double angleToPoint = self.getAngleTo(wayPoint.getX(), wayPoint.getY());
-        if (isUnitInVisionRange(targetToAttack)) move.setTurn(self.getAngleTo(targetToAttack));
-        else if (isUnitInVisionRange(nearestEnemyUnit)) move.setTurn(self.getAngleTo(nearestEnemyUnit));
+        if (Utils.isUnitInVisionRange(self, targetToAttack)) move.setTurn(self.getAngleTo(targetToAttack));
+        else if (Utils.isUnitInVisionRange(self, nearestEnemyUnit)) move.setTurn(self.getAngleTo(nearestEnemyUnit));
         else move.setTurn(angleToPoint);
         move.setSpeed(cos(angleToPoint) * distanceToPoint);
         move.setStrafeSpeed(sin(angleToPoint) * distanceToPoint);
@@ -458,11 +425,9 @@ public final class MyStrategy implements Strategy {
 
     private boolean areBonusesReachable() {
         return ((wayPoints.getCurrentLane() != LaneType.MIDDLE &&
-//                wayPoints.getNextWayPointIndex() - 1 == 10)
                 wayPoints.getNextWayPointIndex() - 1 >= 9 &&
                 wayPoints.getNextWayPointIndex() - 1 <= 14)
                 || (wayPoints.getCurrentLane() == LaneType.MIDDLE &&
-//                wayPoints.getNextWayPointIndex() - 1 == 9));
                 wayPoints.getNextWayPointIndex() - 1 >= 9 &&
                 wayPoints.getNextWayPointIndex() - 1 <= 11));
     }
@@ -507,7 +472,6 @@ public final class MyStrategy implements Strategy {
         for (Wizard wizard : world.getWizards()) {
             if (wayPoint.getDistanceTo(wizard) + game.getBonusRadius() <= wizard.getVisionRange()) {
                 if ((didSeeBonus && bonusToTake == null) ||
-                        isInitialBonusCheck ||
                         (!didSeeBonus && ((world.getTickIndex() - 5) % game.getBonusAppearanceIntervalTicks() <= 2000))) {
                     isBonusInPlace = false;
                     didSeeBonus = true;
@@ -521,7 +485,6 @@ public final class MyStrategy implements Strategy {
         if (!isBonusInPlace) {
             shouldCheckForBonus = false;
             canCheckBonus = false;
-            if (isInitialBonusCheck) isInitialBonusCheck = false;
             shouldReturnFromBonus = true;
             wayPoint = wayPoints.getWayPointBeforeBonus();
         } else if (!centralWayPointIsPassed && centralPoint.getDistanceTo(self) > Constants.WAY_POINT_RADIUS) {
@@ -568,12 +531,9 @@ public final class MyStrategy implements Strategy {
         }
     }
 
+    // TODO: implement this method
     private boolean shouldAttackNeutralMinion() {
-        int count = 0;
-        for (LivingUnit minion : visibleNeutralMinionsByMe) {
-            if (collisionHandler.isColliding(minion, self)) count++;
-        }
-        return count > 1;
+        return false;
     }
 
     private int getTimeNeededToTakeBonus() {
@@ -587,28 +547,6 @@ public final class MyStrategy implements Strategy {
         if (closestIndex <= 10 && closestIndex >= 8) return (int) floor(wayPoint.getDistanceTo(self) / speed);
         else return (int) floor((wayPoints.getCentralPoint().getDistanceTo(self) +
                 wayPoints.getCentralPoint().getDistanceTo(wayPoint) - 180.0) / speed);
-    }
-
-    private boolean isUnitInVisionRange(Unit unit) {
-        if (unit != null && unit instanceof LivingUnit)
-            return self.getDistanceTo(unit) - ((LivingUnit) unit).getRadius() <= self.getVisionRange();
-        return unit != null && self.getDistanceTo(unit) <= self.getVisionRange();
-    }
-
-    private boolean isUnitInStaffSector(Unit unit) {
-        return unit != null && abs(self.getAngleTo(unit)) <= game.getStaffSector() / 2.0;
-    }
-
-    private boolean isUnitInCastRange(Unit unit) {
-        if (unit != null && unit instanceof LivingUnit)
-            return self.getDistanceTo(unit) - ((LivingUnit) unit).getRadius() <= self.getCastRange();
-        return unit != null && self.getDistanceTo(unit) <= self.getCastRange();
-    }
-
-    private boolean isUnitInStaffRange(Unit unit) {
-        if (unit != null && unit instanceof LivingUnit)
-            return self.getDistanceTo(unit) - ((LivingUnit) unit).getRadius() <= 70.0;
-        return unit != null && self.getDistanceTo(unit) <= 70.0;
     }
 
     private boolean isUnitInSafeRange(Unit unit) {
@@ -632,16 +570,6 @@ public final class MyStrategy implements Strategy {
             return BraveryLevel.RUN_FOREST_RUN;
         } else if (runAwayCountdown > 0 && wayPoints.getPreviousWayPointIndex() > 0)
             return BraveryLevel.RUN_FOREST_RUN;
-
-        Point2D[] currentWayPoints = wayPoints.getCurrentLaneWayPoints();
-        if (wayPoints.getClosestWayPointIndex() >= currentWayPoints.length - 5) {
-            Point2D lastSafeWayPoint = currentWayPoints[currentWayPoints.length - 5];
-            double distanceToLastSafePoint = self.getDistanceTo(lastSafeWayPoint.getX(), lastSafeWayPoint.getY());
-            int minionAppearanceInterval = game.getFactionMinionAppearanceIntervalTicks();
-            if ((minionAppearanceInterval - (world.getTickIndex() % minionAppearanceInterval) - 4.0
-                    <= (distanceToLastSafePoint / 3.0)))
-                return BraveryLevel.BEWARE_OF_MINIONS_NEAR_BASE;
-        }
 
         if (nearestEnemyUnit != null) {
             int count = 0;
