@@ -168,7 +168,8 @@ public class WayPoints {
         middle = new Point2D[19];
         middle[0] = new Point2D(mapSize * 0.05, mapSize * 0.95);
         middle[1] = new Point2D(mapSize * 0.05, mapSize * 0.9 + 20.0);
-        for (int i = 2; i <= 12; i++) {
+        middle[2] = new Point2D(mapSize * 0.05, mapSize * 0.80);
+        for (int i = 3; i <= 12; i++) {
             middle[i] = new Point2D(mapSize * (((i - 2.0) / 2.0 + 1.5) / 10.0),
                     mapSize * ((9.5 - i * 0.5) / 10.0));
         }

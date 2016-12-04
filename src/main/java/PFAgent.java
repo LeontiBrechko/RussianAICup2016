@@ -4,8 +4,8 @@ import java.util.ArrayDeque;
 
 @SuppressWarnings("WeakerAccess")
 public class PFAgent {
-    private static final int TRAIL_LENGTH = 100;
-    private static final int TRAIL_POTENTIAL = -3;
+    private static final int TRAIL_LENGTH = 200;
+    private static final int TRAIL_POTENTIAL = -2000;
 
     private ArrayDeque<PFMap> dynamicMaps;
     private ArrayDeque<PFAgentTrail> trails;
