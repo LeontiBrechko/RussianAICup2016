@@ -1,8 +1,12 @@
 import model.*;
 
-import java.util.*;
+import java.util.EnumMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Random;
 
-import static java.lang.StrictMath.*;
+import static java.lang.StrictMath.abs;
+import static java.lang.StrictMath.min;
 
 @SuppressWarnings("WeakerAccess")
 public class WayPoints {
@@ -81,9 +85,9 @@ public class WayPoints {
     }
 
     public void findTickWayPoints(Wizard self, Random random) {
-        findClosestWayPoint(self, random);
-        findNextWayPoint(self, random);
-        findPreviousWayPoint(self, random);
+        findClosestWayPoint(self);
+        findNextWayPoint(self);
+        findPreviousWayPoint(self);
     }
 
     public boolean isLaneDetermined() {
@@ -164,10 +168,11 @@ public class WayPoints {
         middle = new Point2D[19];
         middle[0] = new Point2D(mapSize * 0.05, mapSize * 0.95);
         middle[1] = new Point2D(mapSize * 0.05, mapSize * 0.9 + 20.0);
-        for (int i = 2; i <= 13; i++) {
+        for (int i = 2; i <= 12; i++) {
             middle[i] = new Point2D(mapSize * (((i - 2.0) / 2.0 + 1.5) / 10.0),
                     mapSize * ((9.5 - i * 0.5) / 10.0));
         }
+        middle[13] = new Point2D(mapSize * 0.72, mapSize * 0.33);
         middle[14] = new Point2D(mapSize * 0.77, mapSize * 0.28);
         middle[15] = new Point2D(mapSize * 0.82, mapSize * 0.23);
         middle[16] = new Point2D(mapSize * 0.87, mapSize * 0.18);
@@ -286,75 +291,39 @@ public class WayPoints {
         return bonusWayPoints;
     }
 
-    private void findNextWayPoint(Wizard self, Random random) {
+    private void findNextWayPoint(Wizard self) {
         double currentDist;
-        double x, y;
 
         for (int i = currentLaneWayPoints.length - 2; i >= 0; i--) {
             currentDist = currentLaneWayPoints[i].getDistanceTo(self);
             if (currentDist <= Constants.WAY_POINT_RADIUS) {
-                if (i + 1 != nextWayPointIndex) {
-                    if (i + 1 < currentLaneWayPoints.length - 5) {
-                        x = currentLaneWayPoints[i + 1].getX() +
-                                random.nextDouble() * 2 * Constants.WAY_POINT_RANGE - Constants.WAY_POINT_RANGE;
-                        y = currentLaneWayPoints[i + 1].getY() +
-                                random.nextDouble() * 2 * Constants.WAY_POINT_RANGE - Constants.WAY_POINT_RANGE;
-                        x = min(x, 3964.0);
-                        x = max(x, 36.0);
-                        y = min(y, 3964.0);
-                        y = max(y, 36.0);
-                        nextWayPoint = new Point2D(x, y);
-                        nextWayPointIndex = i + 1;
-                    } else {
-                        nextWayPoint = currentLaneWayPoints[i + 1];
-                        nextWayPointIndex = i + 1;
-                    }
-                }
+                nextWayPoint = currentLaneWayPoints[i + 1];
+                nextWayPointIndex = i + 1;
                 return;
             }
         }
 
-        if (closestWayPointIndex != nextWayPointIndex) {
-            nextWayPoint = closestWayPoint;
-            nextWayPointIndex = closestWayPointIndex;
-        }
+        nextWayPoint = closestWayPoint;
+        nextWayPointIndex = closestWayPointIndex;
     }
 
-    private void findPreviousWayPoint(Wizard self, Random random) {
+    private void findPreviousWayPoint(Wizard self) {
         double currentDist;
-        double x, y;
 
         for (int i = 1; i < currentLaneWayPoints.length; i++) {
             currentDist = currentLaneWayPoints[i].getDistanceTo(self);
             if (currentDist <= Constants.WAY_POINT_RADIUS) {
-                if (i - 1 != previousWayPointIndex) {
-                    if (i - 1 < currentLaneWayPoints.length - 5) {
-                        x = currentLaneWayPoints[i - 1].getX()
-                                + random.nextDouble() * 2 * Constants.WAY_POINT_RANGE - Constants.WAY_POINT_RANGE;
-                        y = currentLaneWayPoints[i - 1].getY()
-                                + random.nextDouble() * 2 * Constants.WAY_POINT_RANGE - Constants.WAY_POINT_RANGE;
-                        x = min(x, 3964.0);
-                        x = max(x, 36.0);
-                        y = min(y, 3964.0);
-                        y = max(y, 36.0);
-                        previousWayPoint = new Point2D(x, y);
-                        previousWayPointIndex = i - 1;
-                    } else {
-                        previousWayPoint = currentLaneWayPoints[i - 1];
-                        previousWayPointIndex = i - 1;
-                    }
-                }
+                previousWayPoint = currentLaneWayPoints[i - 1];
+                previousWayPointIndex = i - 1;
                 return;
             }
         }
 
-        if (closestWayPointIndex != previousWayPointIndex) {
-            previousWayPoint = closestWayPoint;
-            previousWayPointIndex = closestWayPointIndex;
-        }
+        previousWayPoint = closestWayPoint;
+        previousWayPointIndex = closestWayPointIndex;
     }
 
-    private void findClosestWayPoint(Wizard self, Random random) {
+    private void findClosestWayPoint(Wizard self) {
         Point2D closest = currentLaneWayPoints[0];
         int closestIndex = 0;
         double closestDistance = closest.getDistanceTo(self);
@@ -369,22 +338,7 @@ public class WayPoints {
             }
         }
 
-        if (closestIndex != closestWayPointIndex) {
-            if (closestIndex < currentLaneWayPoints.length - 5) {
-                double x = closest.getX()
-                        + random.nextDouble() * 2 * Constants.WAY_POINT_RANGE - Constants.WAY_POINT_RANGE;
-                double y = closest.getY()
-                        + random.nextDouble() * 2 * Constants.WAY_POINT_RANGE - Constants.WAY_POINT_RANGE;
-                x = min(x, 3964.0);
-                x = max(x, 36.0);
-                y = min(y, 3964.0);
-                y = max(y, 36.0);
-                closestWayPoint = new Point2D(x, y);
-                closestWayPointIndex = closestIndex;
-            } else {
-                closestWayPoint = closest;
-                closestWayPointIndex = closestIndex;
-            }
-        }
+        closestWayPoint = closest;
+        closestWayPointIndex = closestIndex;
     }
 }
