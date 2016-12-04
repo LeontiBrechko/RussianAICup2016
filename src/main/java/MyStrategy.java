@@ -322,12 +322,6 @@ public final class MyStrategy implements Strategy {
     }
 
     private Optional<LivingUnit> getWeakestEnemyInCastRange() {
-        Minion weakestEnemyMinionInCastRange =
-                getWeakestEnemyMinionInCastRange(MinionType.ORC_WOODCUTTER).orElse(null);
-        if (weakestEnemyMinionInCastRange != null) return Optional.of(weakestEnemyMinionInCastRange);
-        weakestEnemyMinionInCastRange = getWeakestEnemyMinionInCastRange(MinionType.FETISH_BLOWDART).orElse(null);
-        if (weakestEnemyMinionInCastRange != null) return Optional.of(weakestEnemyMinionInCastRange);
-
         for (LivingUnit building : visibleEnemyUnitsByMe.get(UnitType.BUILDING)) {
             if (Utils.isUnitInCastRange(self, building)) {
                 if (((Building) building).getType() == BuildingType.FACTION_BASE ||
@@ -336,7 +330,14 @@ public final class MyStrategy implements Strategy {
                 }
             }
         }
-        return Optional.ofNullable(getWeakestEnemyWizardInCastRange().orElse(null));
+
+        Wizard weakestEnemyWizardInCastRange = getWeakestEnemyWizardInCastRange().orElse(null);
+        if (weakestEnemyWizardInCastRange != null) return Optional.of(weakestEnemyWizardInCastRange);
+
+        Minion weakestEnemyMinionInCastRange =
+                getWeakestEnemyMinionInCastRange(MinionType.ORC_WOODCUTTER).orElse(null);
+        if (weakestEnemyMinionInCastRange != null) return Optional.of(weakestEnemyMinionInCastRange);
+        return Optional.ofNullable(getWeakestEnemyMinionInCastRange(MinionType.FETISH_BLOWDART).orElse(null));
     }
 
     private Optional<Wizard> getWeakestEnemyWizardInCastRange() {
