@@ -535,14 +535,14 @@ public final class MyStrategy implements Strategy {
             LivingUnit nextTarget = Utils.nextBuildingTarget(building, world, game).orElse(null);
             if (nextTarget == null || nextTarget.getId() == self.getId()) {
                 return building.getAttackRange() *
-                        (1.0 - (max(0.0, building.getRemainingActionCooldownTicks() - 1)
+                        (1.0 - (max(0.0, building.getRemainingActionCooldownTicks() - 10)
                                 / building.getCooldownTicks())) + 1.0;
-            } else return 69.0;
+            } else return self.getCastRange();
         } else if (unit instanceof Wizard && !((Wizard) unit).isMe()) {
             Wizard wizard = (Wizard) unit;
             if (abs(wizard.getAngleTo(self)) <= game.getStaffSector() / 2.0) {
                 return wizard.getCastRange() *
-                        (1 - max(0.0, wizard.getRemainingActionCooldownTicks() - 1)
+                        (1 - max(0.0, wizard.getRemainingActionCooldownTicks() - 10)
                                 / game.getWizardActionCooldownTicks()) + 1.0;
             } else return self.getCastRange();
         } else return self.getCastRange();
