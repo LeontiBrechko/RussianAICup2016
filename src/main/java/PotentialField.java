@@ -71,7 +71,7 @@ public abstract class PotentialField {
             int distance = (int) (hypot(localX, localY)) - objectRadius - Constants.COLLISION_RADIUS;
             int localPotential;
             if (distance <= 0) localPotential = Constants.NOT_PASSABLE_POTENTIAL;
-            else if (distance > 0 && distance <= Constants.COLLESION_BORDER_LENGTH)
+            else if (distance > 0 && distance <= Constants.COLLISION_BORDER_LENGTH)
                 localPotential = getBorderRepelPotential(distance);
             else localPotential = 0;
             return (int) (localPotential * potentialWeight);
@@ -107,7 +107,7 @@ public abstract class PotentialField {
     // Attract part
     public static class WayPointAttractPF extends PotentialField {
         public WayPointAttractPF(int x, int y) {
-            super(x, y, (int) (Constants.WAY_POINT_RADIUS * 3), 1.0, 1.0, 0);
+            super(x, y, (int) (Constants.WAY_POINT_RADIUS * 7), 2.0, 1.3, 0);
         }
 
         @Override

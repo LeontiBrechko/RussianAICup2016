@@ -5,7 +5,7 @@ import java.util.ArrayDeque;
 @SuppressWarnings("WeakerAccess")
 public class PFAgent {
     private static final int TRAIL_LENGTH = 100;
-    private static final int TRAIL_POTENTIAL = (int) (Constants.NOT_PASSABLE_POTENTIAL);
+    private static final int TRAIL_POTENTIAL = -3;
 
     private ArrayDeque<PFMap> dynamicMaps;
     private ArrayDeque<PFAgentTrail> trails;
@@ -16,7 +16,8 @@ public class PFAgent {
 
     public Point2D handleNextTick(Wizard self, World world, Game game, Point2D wayPointToGo) {
         populatePFMaps(self, world, game, wayPointToGo);
-//        debug(false, self, world);
+//        boolean flag = world.getTickIndex() >= 4850;
+//        debug(flag, self, world);
         return getBestPointToMove(self);
     }
 
@@ -44,8 +45,8 @@ public class PFAgent {
 
         int maxX = x, maxY = y, nextValue, maxValue = potentialSumInPoint(x, y, self);
 
-        for (int deltaX = -1; deltaX <= 1; deltaX++) {
-            for (int deltaY = -1; deltaY <= 1; deltaY++) {
+        for (int deltaX = 1; deltaX >= -1; deltaX--) {
+            for (int deltaY = 1; deltaY >= -1; deltaY--) {
                 if (deltaX == 0 && deltaY == 0) continue;
                 nextValue = potentialSumInPoint(x + deltaX * Constants.STEP_SIZE,
                         y + deltaY * Constants.STEP_SIZE, self);

@@ -85,9 +85,9 @@ public class WayPoints {
     }
 
     public void findTickWayPoints(Wizard self, Random random) {
-        findClosestWayPoint(self, random);
-        findNextWayPoint(self, random);
-        findPreviousWayPoint(self, random);
+        findClosestWayPoint(self);
+        findNextWayPoint(self);
+        findPreviousWayPoint(self);
     }
 
     public boolean isLaneDetermined() {
@@ -168,10 +168,11 @@ public class WayPoints {
         middle = new Point2D[19];
         middle[0] = new Point2D(mapSize * 0.05, mapSize * 0.95);
         middle[1] = new Point2D(mapSize * 0.05, mapSize * 0.9 + 20.0);
-        for (int i = 2; i <= 13; i++) {
+        for (int i = 2; i <= 12; i++) {
             middle[i] = new Point2D(mapSize * (((i - 2.0) / 2.0 + 1.5) / 10.0),
                     mapSize * ((9.5 - i * 0.5) / 10.0));
         }
+        middle[13] = new Point2D(mapSize * 0.72, mapSize * 0.33);
         middle[14] = new Point2D(mapSize * 0.77, mapSize * 0.28);
         middle[15] = new Point2D(mapSize * 0.82, mapSize * 0.23);
         middle[16] = new Point2D(mapSize * 0.87, mapSize * 0.18);
@@ -290,7 +291,7 @@ public class WayPoints {
         return bonusWayPoints;
     }
 
-    private void findNextWayPoint(Wizard self, Random random) {
+    private void findNextWayPoint(Wizard self) {
         double currentDist;
 
         for (int i = currentLaneWayPoints.length - 2; i >= 0; i--) {
@@ -306,7 +307,7 @@ public class WayPoints {
         nextWayPointIndex = closestWayPointIndex;
     }
 
-    private void findPreviousWayPoint(Wizard self, Random random) {
+    private void findPreviousWayPoint(Wizard self) {
         double currentDist;
 
         for (int i = 1; i < currentLaneWayPoints.length; i++) {
@@ -322,7 +323,7 @@ public class WayPoints {
         previousWayPointIndex = closestWayPointIndex;
     }
 
-    private void findClosestWayPoint(Wizard self, Random random) {
+    private void findClosestWayPoint(Wizard self) {
         Point2D closest = currentLaneWayPoints[0];
         int closestIndex = 0;
         double closestDistance = closest.getDistanceTo(self);
