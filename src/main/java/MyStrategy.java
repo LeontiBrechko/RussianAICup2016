@@ -6,7 +6,6 @@ import static java.lang.Math.*;
 
 @SuppressWarnings("WeakerAccess")
 public final class MyStrategy implements Strategy {
-    HashSet<SkillType> skills;
     private Random random;
     private PFAgent pfAgent;
     private Wizard self;
@@ -26,9 +25,9 @@ public final class MyStrategy implements Strategy {
     private Map<UnitType, ArrayDeque<LivingUnit>> visibleFriendUnitsByMe;
     private ArrayDeque<Tree> visibleTreesByMe;
     private ArrayDeque<Minion> visibleNeutralMinionsByMe;
-    private LivingUnit nearestEnemyUnit;
     private Tree nearestTree;
     private Minion nearestNeutralMinion;
+    private LivingUnit nearestEnemyUnit;
     private LivingUnit targetToAttack;
     private LivingUnit enemyUnitInSafeRange;
     private BraveryLevel braveryLevel;
@@ -36,7 +35,7 @@ public final class MyStrategy implements Strategy {
     private int previousTickLife;
     private int runAwayCountdown;
     private boolean shouldAttackNeutralMinion;
-    private int frostBoltCoolDown;
+    private HashSet<SkillType> skills;
 
     @Override
     public void move(Wizard self, World world, Game game, Move move) {
@@ -49,7 +48,6 @@ public final class MyStrategy implements Strategy {
             handleMovement();
             previousTickLife = self.getLife();
             previousTickIndex = world.getTickIndex();
-            if (frostBoltCoolDown > 0) frostBoltCoolDown--;
         }
     }
 
@@ -128,20 +126,19 @@ public final class MyStrategy implements Strategy {
     }
 
     private void handleActionExecution() {
+        if (Utils.canUseFireBall(self, game, skills)) {
+            LivingUnit potentialTarget = Utils.getFireBallTarget(self, world).orElse(null);
+            if (potentialTarget != null) targetToAttack = potentialTarget;
+        }
         if (Utils.isUnitInStaffSector(self, targetToAttack, game)) {
             if (Utils.isUnitInStaffRange(self, targetToAttack)) {
                 move.setAction(ActionType.STAFF);
                 move.setCastAngle(self.getAngleTo(targetToAttack));
             } else if (Utils.isUnitInCastRange(self, targetToAttack)) {
-                if (skills.contains(SkillType.FROST_BOLT) &&
-                        frostBoltCoolDown <= 0 &&
-                        self.getMana() >= game.getFrostBoltManacost() &&
-                        !Arrays.stream(targetToAttack.getStatuses())
-                                .filter((status) -> status.getType() == StatusType.FROZEN).findAny().isPresent()) {
-                    move.setAction(ActionType.FROST_BOLT);
+                if (Utils.canUseFireBall(self, game, skills)) {
+                    move.setAction(ActionType.FIREBALL);
                     move.setMinCastDistance(self.getDistanceTo(targetToAttack) -
-                            targetToAttack.getRadius() + game.getFrostBoltRadius());
-                    frostBoltCoolDown = game.getFrostBoltCooldownTicks() + 1;
+                            targetToAttack.getRadius() + game.getFireballRadius());
                 } else {
                     move.setAction(ActionType.MAGIC_MISSILE);
                     move.setMinCastDistance(self.getDistanceTo(targetToAttack) -
