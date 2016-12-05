@@ -42,7 +42,10 @@ public class Utils {
             }
         }
 
-        UnitNearbyCountPair bestPair = pairs.peek();
+        UnitNearbyCountPair bestPair = pairs.poll();
+        while (bestPair != null && self.getDistanceTo(bestPair.unit) - bestPair.unit.getRadius() <= 100)
+            bestPair = pairs.poll();
+
         return Optional.ofNullable(bestPair != null && bestPair.count > 0 ? bestPair.unit : null);
     }
 

@@ -518,9 +518,9 @@ public final class MyStrategy implements Strategy {
 
     private Point2D getLastSafePoint() {
         if (braveryLevel == BraveryLevel.RUN_FOREST_RUN) {
-            if (Utils.isUnitInVisionRange(self, enemyUnitInSafeRange))
-                return wayPoints.getPreviousWayPoint();
-            else return wayPoints.getClosestWayPoint();
+            if (Utils.isUnitInVisionRange(self, nearestEnemyUnit))
+                return wayPoints.getCurrentLaneWayPoints()[max(0, wayPoints.getPreviousWayPointIndex() - 1)];
+            else return wayPoints.getCurrentLaneWayPoints()[max(0, wayPoints.getClosestWayPointIndex() - 1)];
         } else if (braveryLevel == BraveryLevel.BEWARE_OF_MINIONS_NEAR_BASE) {
             Point2D[] currentWayPoints = wayPoints.getCurrentLaneWayPoints();
             return currentWayPoints[currentWayPoints.length - 5];
@@ -568,9 +568,9 @@ public final class MyStrategy implements Strategy {
         } else if (unit instanceof Wizard && !((Wizard) unit).isMe()) {
             Wizard wizard = (Wizard) unit;
             if (abs(wizard.getAngleTo(self)) <= game.getStaffSector() / 2.0) {
-                return wizard.getCastRange() *
-                        (1 - max(0.0, wizard.getRemainingActionCooldownTicks() - 10)
-                                / game.getWizardActionCooldownTicks()) + 1.0;
+                if (wizard.getLevel() >= self.getLevel() || wizard.getLife() >= self.getLife())
+                    return wizard.getCastRange() + 1.0;
+                else return self.getCastRange();
             } else return self.getCastRange();
         } else return self.getCastRange();
     }
@@ -582,8 +582,6 @@ public final class MyStrategy implements Strategy {
             return BraveryLevel.RUN_FOREST_RUN;
         } else if (runAwayCountdown > 0 && wayPoints.getPreviousWayPointIndex() > 0)
             return BraveryLevel.RUN_FOREST_RUN;
-
-        if (canCheckBonus) return BraveryLevel.NEED_TO_GRAB_BONUS;
 
         if (nearestEnemyUnit != null) {
             int count = 0;
@@ -621,6 +619,11 @@ public final class MyStrategy implements Strategy {
                         && closestDists[2] > distanceToEnemy) return BraveryLevel.BETTER_TO_GO_BACK;
             }
         }
+
+        if (self.getRemainingActionCooldownTicks() >= game.getWizardActionCooldownTicks() * 0.2)
+            return BraveryLevel.BETTER_TO_GO_BACK;
+
+        if (canCheckBonus) return BraveryLevel.NEED_TO_GRAB_BONUS;
 
         if (enemyUnitInSafeRange != null) return BraveryLevel.ENEMY_IN_SAFE_RANGE;
 
