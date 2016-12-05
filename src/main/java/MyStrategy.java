@@ -433,7 +433,7 @@ public final class MyStrategy implements Strategy {
 
     private boolean areBonusesReachable() {
         return ((wayPoints.getCurrentLane() != LaneType.MIDDLE &&
-                wayPoints.getNextWayPointIndex() - 1 >= 9 &&
+                wayPoints.getNextWayPointIndex() - 1 >= 10 &&
                 wayPoints.getNextWayPointIndex() - 1 <= 14)
                 || (wayPoints.getCurrentLane() == LaneType.MIDDLE &&
                 wayPoints.getNextWayPointIndex() - 1 >= 9 &&
@@ -519,8 +519,8 @@ public final class MyStrategy implements Strategy {
     private Point2D getLastSafePoint() {
         if (braveryLevel == BraveryLevel.RUN_FOREST_RUN) {
             if (Utils.isUnitInVisionRange(self, nearestEnemyUnit))
-                return wayPoints.getCurrentLaneWayPoints()[max(0, wayPoints.getPreviousWayPointIndex() - 1)];
-            else return wayPoints.getCurrentLaneWayPoints()[max(0, wayPoints.getClosestWayPointIndex() - 1)];
+                return wayPoints.getPreviousWayPoint();
+            else return wayPoints.getClosestWayPoint();
         } else if (braveryLevel == BraveryLevel.BEWARE_OF_MINIONS_NEAR_BASE) {
             Point2D[] currentWayPoints = wayPoints.getCurrentLaneWayPoints();
             return currentWayPoints[currentWayPoints.length - 5];
@@ -567,11 +567,9 @@ public final class MyStrategy implements Strategy {
             } else return 69.0;
         } else if (unit instanceof Wizard && !((Wizard) unit).isMe()) {
             Wizard wizard = (Wizard) unit;
-            if (abs(wizard.getAngleTo(self)) <= game.getStaffSector() / 2.0) {
-                if (wizard.getLevel() >= self.getLevel() || wizard.getLife() >= self.getLife())
-                    return wizard.getCastRange() + 1.0;
-                else return self.getCastRange();
-            } else return self.getCastRange();
+            if (wizard.getLevel() >= self.getLevel() || wizard.getLife() >= self.getLife())
+                return wizard.getCastRange() + 1.0;
+            else return self.getCastRange();
         } else return self.getCastRange();
     }
 
@@ -579,9 +577,20 @@ public final class MyStrategy implements Strategy {
         if ((self.getLife() <= 37 || previousTickLife - self.getLife() >= 23)
                 && wayPoints.getPreviousWayPointIndex() > 0) {
             runAwayCountdown = Constants.RUN_AWAY_COUNTDOWN;
+            shouldCheckForBonus = false;
+            canCheckBonus = false;
+            didSeeBonus = false;
+            shouldReturnFromBonus = false;
+            centralWayPointIsPassed = false;
             return BraveryLevel.RUN_FOREST_RUN;
-        } else if (runAwayCountdown > 0 && wayPoints.getPreviousWayPointIndex() > 0)
+        } else if (runAwayCountdown > 0 && wayPoints.getPreviousWayPointIndex() > 0) {
+            shouldCheckForBonus = false;
+            canCheckBonus = false;
+            didSeeBonus = false;
+            shouldReturnFromBonus = false;
+            centralWayPointIsPassed = false;
             return BraveryLevel.RUN_FOREST_RUN;
+        }
 
         if (nearestEnemyUnit != null) {
             int count = 0;
