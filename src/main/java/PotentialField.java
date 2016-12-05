@@ -112,6 +112,7 @@ public abstract class PotentialField {
 
         @Override
         public int getLocalPotential(int x, int y, int maxDetectionRange, int maxShootingRange) {
+            if (x <= 36 || y <= 36 || x >= 3964 || y >= 3964) return 0;
             int localX = this.x - x;
             int localY = this.y - y;
             return (int) (potentialWeight * (potential - gradation * hypot(localX, localY)));
