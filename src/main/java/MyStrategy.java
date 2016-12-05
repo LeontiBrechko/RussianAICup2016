@@ -69,6 +69,7 @@ public final class MyStrategy implements Strategy {
 
         if (world.getTickIndex() - previousTickIndex > 1 || !wayPoints.isLaneDetermined()) {
             wayPoints.determineWayToGo(self, world, game, friendFaction);
+            wayPoints.findTickWayPoints(self, random);
             shouldCheckForBonus = false;
             canCheckBonus = false;
             didSeeBonus = false;
