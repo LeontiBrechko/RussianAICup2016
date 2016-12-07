@@ -26,7 +26,6 @@ public final class MyStrategy implements Strategy {
     private ArrayDeque<Tree> visibleTreesByMe;
     private ArrayDeque<Minion> visibleNeutralMinionsByMe;
     private Tree nearestTree;
-    private Minion nearestNeutralMinion;
     private LivingUnit nearestEnemyUnit;
     private LivingUnit targetToAttack;
     private LivingUnit enemyUnitInSafeRange;
@@ -34,7 +33,6 @@ public final class MyStrategy implements Strategy {
     private Faction friendFaction;
     private int previousTickLife;
     private int runAwayCountdown;
-    private boolean shouldAttackNeutralMinion;
     private HashSet<SkillType> skills;
 
     @Override
@@ -106,8 +104,6 @@ public final class MyStrategy implements Strategy {
         nearestEnemyUnit = getNearestEnemyUnit().orElse(null);
         enemyUnitInSafeRange = getEnemyUnitInSafeRange().orElse(null);
         nearestTree = getNearestTree().orElse(null);
-        nearestNeutralMinion = getNearestNeutralMinion().orElse(null);
-        if (!shouldAttackNeutralMinion) shouldAttackNeutralMinion = shouldAttackNeutralMinion();
         targetToAttack = getTargetToAttack().orElse(null);
         if (isUnitInSafeRange(nearestEnemyUnit)) {
             enemyUnitInSafeRange = nearestEnemyUnit;
@@ -309,38 +305,13 @@ public final class MyStrategy implements Strategy {
         return Optional.ofNullable(nearestTree);
     }
 
-    private Optional<Minion> getNearestNeutralMinion() {
-        double currentDistance;
-        double nearestNeutralMinionDistance = Float.MAX_VALUE;
-        Minion nearestNeutralMinion = null;
-        boolean isNearestNeutralMinionIsStillVisible = false;
-
-        for (Minion minion : visibleNeutralMinionsByMe) {
-            currentDistance = self.getDistanceTo(minion);
-            if (!isNearestNeutralMinionIsStillVisible &&
-                    currentDistance + Constants.NEAREST_UNIT_ERROR < nearestNeutralMinionDistance) {
-                nearestNeutralMinionDistance = currentDistance;
-                nearestNeutralMinion = minion;
-            }
-            if (Utils.isUnitInStaffRange(self, this.nearestNeutralMinion) &&
-                    this.nearestNeutralMinion.getId() == minion.getId())
-                isNearestNeutralMinionIsStillVisible = true;
-        }
-
-        if (!isNearestNeutralMinionIsStillVisible) shouldAttackNeutralMinion = false;
-        else nearestNeutralMinion = this.nearestNeutralMinion;
-        return Optional.ofNullable(nearestNeutralMinion);
-    }
-
     private Optional<LivingUnit> getTargetToAttack() {
         if (Utils.isUnitInCollisionRange(self, nearestTree)) return Optional.of(nearestTree);
 
         LivingUnit weakestEnemyInCastRange = getWeakestEnemyInCastRange().orElse(null);
         if (weakestEnemyInCastRange != null) return Optional.of(weakestEnemyInCastRange);
 
-        if (shouldAttackNeutralMinion) return Optional.ofNullable(nearestNeutralMinion);
-
-        return Optional.empty();
+        return Optional.ofNullable(getAggressiveNeutralMinion().orElse(null));
     }
 
     private Optional<LivingUnit> getWeakestEnemyInCastRange() {
@@ -529,9 +500,14 @@ public final class MyStrategy implements Strategy {
         }
     }
 
-    // TODO: implement this method
-    private boolean shouldAttackNeutralMinion() {
-        return false;
+    private Optional<Minion> getAggressiveNeutralMinion() {
+        for (Minion minion : visibleNeutralMinionsByMe) {
+            if (Utils.isUnitInCastRange(self, minion)
+                    && minion.getRemainingActionCooldownTicks() != 0) {
+                return Optional.of(minion);
+            }
+        }
+        return Optional.empty();
     }
 
     private int getTimeNeededToTakeBonus() {
