@@ -9,6 +9,13 @@ import static java.lang.Math.abs;
 
 @SuppressWarnings("WeakerAccess")
 public class Utils {
+    public static boolean canUseFrostBall(Wizard self, Game game, Set<SkillType> skills) {
+        return skills.contains(SkillType.FROST_BOLT) &&
+                self.getRemainingActionCooldownTicks() <= 0 &&
+                self.getRemainingCooldownTicksByAction()[ActionType.FROST_BOLT.ordinal()] <= 0 &&
+                self.getMana() >= game.getFrostBoltManacost();
+    }
+
     public static boolean canUseFireBall(Wizard self, Game game, Set<SkillType> skills) {
         return skills.contains(SkillType.FIREBALL) &&
                 self.getRemainingActionCooldownTicks() <= 0 &&
@@ -91,11 +98,11 @@ public class Utils {
     }
 
     public static boolean isUnitInCastRange(Wizard self, LivingUnit unit) {
-        return unit != null && self.getDistanceTo(unit) - unit.getRadius() <= self.getCastRange();
+        return unit != null && self.getDistanceTo(unit) <= self.getCastRange();
     }
 
     public static boolean isUnitInStaffRange(Wizard self, LivingUnit unit) {
-        return unit != null && self.getDistanceTo(unit) - unit.getRadius() <= 70.0;
+        return unit != null && self.getDistanceTo(unit) <= 70.0;
     }
 
     public static boolean isUnitInCollisionRange(Wizard self, LivingUnit unit) {
