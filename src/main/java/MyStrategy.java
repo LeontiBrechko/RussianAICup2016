@@ -128,11 +128,12 @@ public final class MyStrategy implements Strategy {
             if (potentialTarget != null) targetToAttack = potentialTarget;
         }
         if (Utils.isUnitInStaffSector(self, targetToAttack, game)) {
-            if (Utils.isUnitInStaffRange(self, targetToAttack)) {
-                move.setAction(ActionType.STAFF);
-                move.setCastAngle(self.getAngleTo(targetToAttack));
-            } else if (Utils.isUnitInCastRange(self, targetToAttack)) {
-                if (Utils.canUseFireBall(self, game, skills)) {
+            if (Utils.isUnitInCastRange(self, targetToAttack)) {
+                if (Utils.canUseFrostBall(self, game, skills)) {
+                    move.setAction(ActionType.FROST_BOLT);
+                    move.setMinCastDistance(self.getDistanceTo(targetToAttack) -
+                            targetToAttack.getRadius() + game.getFireballRadius());
+                } else if (Utils.canUseFireBall(self, game, skills)) {
                     move.setAction(ActionType.FIREBALL);
                     move.setMinCastDistance(self.getDistanceTo(targetToAttack) -
                             targetToAttack.getRadius() + game.getFireballRadius());
@@ -404,7 +405,7 @@ public final class MyStrategy implements Strategy {
 
     private boolean areBonusesReachable() {
         return ((wayPoints.getCurrentLane() != LaneType.MIDDLE &&
-                wayPoints.getNextWayPointIndex() - 1 >= 10 &&
+                wayPoints.getNextWayPointIndex() - 1 >= 11 &&
                 wayPoints.getNextWayPointIndex() - 1 <= 14)
                 || (wayPoints.getCurrentLane() == LaneType.MIDDLE &&
                 wayPoints.getNextWayPointIndex() - 1 >= 9 &&
@@ -525,14 +526,14 @@ public final class MyStrategy implements Strategy {
 
     private boolean isUnitInSafeRange(Unit unit) {
         return unit instanceof LivingUnit &&
-                self.getDistanceTo(unit) - self.getRadius() <= getSafeRange((LivingUnit) unit);
+                self.getDistanceTo(unit) <= getSafeRange((LivingUnit) unit);
     }
 
     private double getSafeRange(LivingUnit unit) {
         if (unit instanceof Minion) {
             if (((Minion) unit).getType() == MinionType.FETISH_BLOWDART)
                 return game.getFetishBlowdartAttackRange() + 1.0;
-            else return 69.0;
+            else return 100.0;
         } else if (unit instanceof Building) {
             Building building = (Building) unit;
             LivingUnit nextTarget = Utils.nextBuildingTarget(building, world, game).orElse(null);
@@ -540,12 +541,7 @@ public final class MyStrategy implements Strategy {
                 return building.getAttackRange() *
                         (1.0 - (max(0.0, building.getRemainingActionCooldownTicks() - 10)
                                 / building.getCooldownTicks())) + 1.0;
-            } else return 69.0;
-        } else if (unit instanceof Wizard && !((Wizard) unit).isMe()) {
-            Wizard wizard = (Wizard) unit;
-            if (wizard.getLevel() >= self.getLevel() || wizard.getLife() >= self.getLife())
-                return wizard.getCastRange() + 1.0;
-            else return self.getCastRange();
+            } else return self.getCastRange();
         } else return self.getCastRange();
     }
 
@@ -605,7 +601,8 @@ public final class MyStrategy implements Strategy {
             }
         }
 
-        if (self.getRemainingActionCooldownTicks() >= game.getWizardActionCooldownTicks() * 0.2)
+        if (self.getLevel() <= 1 &&
+                self.getRemainingActionCooldownTicks() >= game.getWizardActionCooldownTicks() * 0.2)
             return BraveryLevel.BETTER_TO_GO_BACK;
 
         if (canCheckBonus) return BraveryLevel.NEED_TO_GRAB_BONUS;
