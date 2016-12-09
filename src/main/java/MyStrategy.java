@@ -128,7 +128,7 @@ public final class MyStrategy implements Strategy {
 //            if (potentialTarget != null) targetToAttack = potentialTarget;
 //        }
         if (Utils.isUnitInStaffSector(self, targetToAttack, game)) {
-            if (targetToAttack.getId() == nearestTree.getId()) {
+            if (nearestTree != null && targetToAttack.getId() == nearestTree.getId()) {
                 move.setAction(ActionType.STAFF);
                 move.setCastAngle(self.getAngleTo(targetToAttack));
             } else if (Utils.isUnitInCastRange(self, targetToAttack)) {
