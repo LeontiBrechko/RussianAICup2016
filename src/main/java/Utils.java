@@ -98,11 +98,11 @@ public class Utils {
     }
 
     public static boolean isUnitInCastRange(Wizard self, LivingUnit unit) {
-        return unit != null && self.getDistanceTo(unit) <= self.getCastRange();
+        return unit != null && self.getDistanceTo(unit) - Constants.RANGE_ERROR <= self.getCastRange();
     }
 
     public static boolean isUnitInStaffRange(Wizard self, LivingUnit unit) {
-        return unit != null && self.getDistanceTo(unit) <= 70.0;
+        return unit != null && self.getDistanceTo(unit) - Constants.RANGE_ERROR <= 70.0;
     }
 
     public static boolean isUnitInCollisionRange(Wizard self, LivingUnit unit) {
