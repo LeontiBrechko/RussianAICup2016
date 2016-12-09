@@ -16,7 +16,7 @@ public class Constants {
     public static final int BONUS_AHEAD_TIME = 380;
     public static final double COLLISION_ERROR = 7.6;
     public static final int START_GAME_HOLD = 200;
-    public static final double SAFE_RANGE = 100.0;
+    public static final double RANGE_ERROR = 30.0;
     public static final SkillType[] SKILLS_TO_LEARN = new SkillType[]{
             RANGE_BONUS_PASSIVE_1, RANGE_BONUS_AURA_1, RANGE_BONUS_PASSIVE_2, RANGE_BONUS_AURA_2,
             ADVANCED_MAGIC_MISSILE,
